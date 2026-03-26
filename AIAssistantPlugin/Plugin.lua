@@ -79,10 +79,34 @@ clearBtn.BackgroundColor3 = Color3.fromRGB(110, 45, 45)
 clearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 clearBtn.Parent = frame
 
+local stopBtn = Instance.new("TextButton")
+stopBtn.Text = "Stop"
+stopBtn.Size = UDim2.new(1, -20, 0, 28)
+stopBtn.Position = UDim2.new(0, 10, 0, 182)
+stopBtn.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+stopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+stopBtn.Parent = frame
+
+local undoBtn = Instance.new("TextButton")
+undoBtn.Text = "Undo"
+undoBtn.Size = UDim2.new(0.5, -12, 0, 28)
+undoBtn.Position = UDim2.new(0, 10, 0, 214)
+undoBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+undoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+undoBtn.Parent = frame
+
+local redoBtn = Instance.new("TextButton")
+redoBtn.Text = "Redo"
+redoBtn.Size = UDim2.new(0.5, -12, 0, 28)
+redoBtn.Position = UDim2.new(0.5, 2, 0, 214)
+redoBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+redoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+redoBtn.Parent = frame
+
 local planBox = Instance.new("TextLabel")
 planBox.Text = "Plan will appear here..."
 planBox.Size = UDim2.new(1, -20, 0, 110)
-planBox.Position = UDim2.new(0, 10, 0, 190)
+planBox.Position = UDim2.new(0, 10, 0, 246)
 planBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 planBox.TextColor3 = Color3.fromRGB(200, 200, 200)
 planBox.TextWrapped = true
@@ -94,7 +118,7 @@ planBox.Parent = frame
 
 local logScroll = Instance.new("ScrollingFrame")
 logScroll.Size = UDim2.new(1, -20, 1, -310)
-logScroll.Position = UDim2.new(0, 10, 0, 310)
+logScroll.Position = UDim2.new(0, 10, 0, 366)
 logScroll.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 logScroll.BorderSizePixel = 0
 logScroll.ScrollBarThickness = 6
@@ -119,12 +143,17 @@ local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local StarterGui = game:GetService("StarterGui")
+local StarterPlayer = game:GetService("StarterPlayer")
+local StarterPlayerScripts = StarterPlayer:WaitForChild("StarterPlayerScripts")
 
 local ROOT_FOLDER_NAME = "AI_Build"
 
 local isBusy = false
 local lastPrompt = ""
 local lastStructuredBuild = nil
+local cancelToken = 0
+local undoStack = {}
+local redoStack = {}
 
 local logLines = {}
 local function refreshLogScroll()
@@ -158,6 +187,12 @@ local function setButtonsEnabled(enabled)
 	planBtn.AutoButtonColor = enabled
 	clearBtn.Active = enabled
 	clearBtn.AutoButtonColor = enabled
+	stopBtn.Active = not enabled
+	stopBtn.AutoButtonColor = not enabled
+	undoBtn.Active = enabled and (#undoStack > 0)
+	undoBtn.AutoButtonColor = undoBtn.Active
+	redoBtn.Active = enabled and (#redoStack > 0)
+	redoBtn.AutoButtonColor = redoBtn.Active
 end
 
 local function inPlayClientMode()
@@ -180,6 +215,7 @@ local function startProgress(prefix)
 end
 
 local function requestWithTimeout(url, body, timeoutSeconds)
+	local myToken = cancelToken
 	local done = false
 	local timedOut = false
 	local resultData = nil
@@ -187,6 +223,9 @@ local function requestWithTimeout(url, body, timeoutSeconds)
 
 	task.spawn(function()
 		local data, err = postJson(url, body)
+		if cancelToken ~= myToken then
+			return
+		end
 		if timedOut then
 			return
 		end
@@ -196,6 +235,9 @@ local function requestWithTimeout(url, body, timeoutSeconds)
 	end)
 
 	task.delay(timeoutSeconds, function()
+		if cancelToken ~= myToken then
+			return
+		end
 		if done then
 			return
 		end
@@ -205,11 +247,24 @@ local function requestWithTimeout(url, body, timeoutSeconds)
 
 	-- Wait until either done or timed out
 	while not done and not timedOut do
+		if cancelToken ~= myToken then
+			return nil, "Cancelled"
+		end
 		task.wait(0.05)
 	end
 
 	return resultData, resultErr
 end
+
+stopBtn.MouseButton1Click:Connect(function()
+	if not isBusy then
+		return
+	end
+	cancelToken += 1
+	isBusy = false
+	setButtonsEnabled(true)
+	setLog("Cancelled.")
+end)
 
 local function postJson(url, body)
 	local ok, responseOrError = pcall(function()
@@ -243,6 +298,7 @@ local function ensureAiFolders()
 		workspace = getOrCreateFolder(workspace, ROOT_FOLDER_NAME),
 		server = getOrCreateFolder(ServerScriptService, ROOT_FOLDER_NAME),
 		gui = getOrCreateFolder(StarterGui, ROOT_FOLDER_NAME),
+		starterPlayerScripts = getOrCreateFolder(StarterPlayerScripts, ROOT_FOLDER_NAME),
 	}
 end
 
@@ -259,6 +315,10 @@ local function clearGeneratedBuild()
 	local g = StarterGui:FindFirstChild(ROOT_FOLDER_NAME)
 	if g then
 		if pcall(function() g:Destroy() end) then removed += 1 end
+	end
+	local sps = StarterPlayerScripts:FindFirstChild(ROOT_FOLDER_NAME)
+	if sps then
+		if pcall(function() sps:Destroy() end) then removed += 1 end
 	end
 	return removed
 end
@@ -380,6 +440,8 @@ local function resolveServiceParent(parentKey)
 		return ServerScriptService
 	elseif parentKey == "StarterGui" then
 		return StarterGui
+	elseif parentKey == "StarterPlayerScripts" then
+		return StarterPlayerScripts
 	end
 	return nil
 end
@@ -387,6 +449,12 @@ end
 local function applyStructuredBuild(build)
 	if type(build) ~= "table" or type(build.instances) ~= "table" then
 		return false, "Invalid build payload"
+	end
+
+	-- Track history for Undo/Redo
+	if lastStructuredBuild then
+		table.insert(undoStack, lastStructuredBuild)
+		redoStack = {}
 	end
 
 	-- Reset AI_Build folders each apply for deterministic results
@@ -473,6 +541,8 @@ local function applyStructuredBuild(build)
 			parent = folders.server
 		elseif parent == StarterGui then
 			parent = folders.gui
+		elseif parent == StarterPlayerScripts then
+			parent = folders.starterPlayerScripts
 		end
 		pcall(function()
 			inst.Parent = parent
@@ -482,6 +552,38 @@ local function applyStructuredBuild(build)
 	return true, ("Created %d instances"):format(#specs)
 end
 
+undoBtn.MouseButton1Click:Connect(function()
+	if isBusy then return end
+	if #undoStack == 0 then return end
+	if not lastStructuredBuild then return end
+	local prev = table.remove(undoStack)
+	table.insert(redoStack, lastStructuredBuild)
+	local ok, msg = applyStructuredBuild(prev)
+	if ok then
+		lastStructuredBuild = prev
+		setLog("Undone. " .. msg)
+	else
+		setLog("Undo failed: " .. tostring(msg))
+	end
+	setButtonsEnabled(true)
+end)
+
+redoBtn.MouseButton1Click:Connect(function()
+	if isBusy then return end
+	if #redoStack == 0 then return end
+	if not lastStructuredBuild then return end
+	local nextBuild = table.remove(redoStack)
+	table.insert(undoStack, lastStructuredBuild)
+	local ok, msg = applyStructuredBuild(nextBuild)
+	if ok then
+		lastStructuredBuild = nextBuild
+		setLog("Redone. " .. msg)
+	else
+		setLog("Redo failed: " .. tostring(msg))
+	end
+	setButtonsEnabled(true)
+end)
+
 clearBtn.MouseButton1Click:Connect(function()
 	if isBusy then return end
 	local removed = clearGeneratedBuild()
@@ -489,7 +591,10 @@ clearBtn.MouseButton1Click:Connect(function()
 	lastPrompt = ""
 	promptBox.Text = ""
 	promptBox.PlaceholderText = "Describe your game"
+	undoStack = {}
+	redoStack = {}
 	setLog(("Cleared AI build folders: %d"):format(removed))
+	setButtonsEnabled(true)
 end)
 
 planBtn.MouseButton1Click:Connect(function()
@@ -498,12 +603,16 @@ planBtn.MouseButton1Click:Connect(function()
 		return
 	end
 	if isBusy then return end
+	local myToken = cancelToken
 	isBusy = true
 	setButtonsEnabled(false)
 	local stop = startProgress("Planning")
 	local prompt = promptBox.Text
 	local data, err = requestWithTimeout("https://assistant-3alw.onrender.com/plan", { prompt = prompt, fast = true }, 25)
 	stop()
+	if cancelToken ~= myToken then
+		return
+	end
 	if err then
 		setLog("Plan request failed: " .. err)
 	else
@@ -520,6 +629,7 @@ generateBtn.MouseButton1Click:Connect(function()
 		return
 	end
 	if isBusy then return end
+	local myToken = cancelToken
 	local prompt = promptBox.Text
 	if prompt == "" then
 		setLog("Enter a game prompt first.")
@@ -535,6 +645,9 @@ generateBtn.MouseButton1Click:Connect(function()
 		structured = true,
 	}, 45)
 	stop()
+	if cancelToken ~= myToken then
+		return
+	end
 	if err then
 		setLog("Generate request failed: " .. err)
 		isBusy = false
@@ -568,6 +681,7 @@ refineBtn.MouseButton1Click:Connect(function()
 		return
 	end
 	if isBusy then return end
+	local myToken = cancelToken
 	if not lastStructuredBuild then
 		setLog("Generate first, then Refine.")
 		return
@@ -590,6 +704,9 @@ refineBtn.MouseButton1Click:Connect(function()
 		build = lastStructuredBuild,
 	}, 45)
 	stop()
+	if cancelToken ~= myToken then
+		return
+	end
 	if err then
 		setLog("Refine request failed: " .. err)
 		isBusy = false
