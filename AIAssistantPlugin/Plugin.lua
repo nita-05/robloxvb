@@ -264,64 +264,98 @@ headerH.SortOrder = Enum.SortOrder.LayoutOrder
 headerH.Padding = UDim.new(0, 10)
 headerH.Parent = headerContent
 
+local brandTile = Instance.new("Frame")
+brandTile.Name = "BrandTile"
+brandTile.BackgroundColor3 = Color3.fromRGB(10, 16, 34)
+brandTile.BorderSizePixel = 0
+brandTile.Size = UDim2.new(0, 40, 0, 40)
+brandTile.LayoutOrder = 1
+brandTile.Parent = headerContent
+
+local brandTileCorner = Instance.new("UICorner")
+brandTileCorner.CornerRadius = UDim.new(0, 10)
+brandTileCorner.Parent = brandTile
+
+local brandTileStroke = Instance.new("UIStroke")
+brandTileStroke.Color = Color3.fromRGB(33, 56, 104)
+brandTileStroke.Thickness = 1
+brandTileStroke.Transparency = 0.35
+brandTileStroke.Parent = brandTile
+
 local brandIcon = Instance.new("TextLabel")
 brandIcon.Name = "BrandIcon"
-brandIcon.BackgroundColor3 = Color3.fromRGB(20, 26, 46)
+brandIcon.BackgroundColor3 = Color3.fromRGB(86, 58, 212)
 brandIcon.BorderSizePixel = 0
-brandIcon.Size = UDim2.new(0, 28, 0, 28)
-brandIcon.Position = UDim2.new(0, 0, 0, 0)
-brandIcon.Text = ""
-brandIcon.TextColor3 = THEME.Text
-brandIcon.TextSize = 12
-brandIcon.Font = Enum.Font.SourceSansBold
+brandIcon.Size = UDim2.new(0, 34, 0, 34)
+brandIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+brandIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+brandIcon.Text = "V"
+brandIcon.TextColor3 = Color3.fromRGB(226, 238, 255)
+brandIcon.TextSize = 23
+brandIcon.Font = Enum.Font.GothamBold
 brandIcon.ZIndex = 12
-brandIcon.LayoutOrder = 1
-brandIcon.Parent = headerContent
+brandIcon.Parent = brandTile
 
 local brandCorner = Instance.new("UICorner")
-brandCorner.CornerRadius = UDim.new(0, 10)
+brandCorner.CornerRadius = UDim.new(0, 12)
 brandCorner.Parent = brandIcon
 
 local brandStroke = Instance.new("UIStroke")
-brandStroke.Color = THEME.Primary
-brandStroke.Transparency = 0.35
+brandStroke.Color = Color3.fromRGB(95, 186, 255)
+brandStroke.Transparency = 0.12
 brandStroke.Thickness = 1
 brandStroke.Parent = brandIcon
 
 local brandGrad = Instance.new("UIGradient")
 brandGrad.Color = ColorSequence.new({
-	ColorSequenceKeypoint.new(0, THEME.Primary2),
-	ColorSequenceKeypoint.new(1, THEME.Primary),
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(163, 84, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(74, 211, 255)),
 })
-brandGrad.Rotation = 45
+brandGrad.Rotation = 32
 brandGrad.Parent = brandIcon
 
 local logoCore = Instance.new("Frame")
 logoCore.Name = "LogoCore"
 logoCore.AnchorPoint = Vector2.new(0.5, 0.5)
-logoCore.Position = UDim2.new(0.5, 0, 0.5, 0)
-logoCore.Size = UDim2.new(0, 12, 0, 12)
-logoCore.BackgroundColor3 = Color3.fromRGB(8, 18, 38)
+logoCore.Position = UDim2.new(0.45, 0, 0.52, 0)
+logoCore.Size = UDim2.new(0, 14, 0, 14)
+logoCore.BackgroundColor3 = Color3.fromRGB(6, 14, 28)
 logoCore.BorderSizePixel = 0
 logoCore.ZIndex = 13
 logoCore.Parent = brandIcon
 
 local logoCoreCorner = Instance.new("UICorner")
-logoCoreCorner.CornerRadius = UDim.new(0, 4)
+logoCoreCorner.CornerRadius = UDim.new(0, 5)
 logoCoreCorner.Parent = logoCore
 
 local logoCoreStroke = Instance.new("UIStroke")
 logoCoreStroke.Color = THEME.Primary
-logoCoreStroke.Thickness = 1
-logoCoreStroke.Transparency = 0.1
+logoCoreStroke.Thickness = 1.5
+logoCoreStroke.Transparency = 0.05
 logoCoreStroke.Parent = logoCore
+
+local orbit = Instance.new("Frame")
+orbit.Name = "LogoOrbit"
+orbit.AnchorPoint = Vector2.new(0.5, 0.5)
+orbit.Position = UDim2.new(0.56, 0, 0.53, 0)
+orbit.Size = UDim2.new(0, 18, 0, 18)
+orbit.BackgroundTransparency = 1
+orbit.BorderSizePixel = 0
+orbit.ZIndex = 13
+orbit.Parent = brandIcon
+
+local orbitStroke = Instance.new("UIStroke")
+orbitStroke.Color = Color3.fromRGB(0, 174, 255)
+orbitStroke.Thickness = 1.2
+orbitStroke.Transparency = 0.25
+orbitStroke.Parent = orbit
 
 local logoDot = Instance.new("Frame")
 logoDot.Name = "LogoDot"
-logoDot.AnchorPoint = Vector2.new(1, 0)
-logoDot.Position = UDim2.new(1, -5, 0, 5)
-logoDot.Size = UDim2.new(0, 4, 0, 4)
-logoDot.BackgroundColor3 = THEME.Primary
+logoDot.AnchorPoint = Vector2.new(0.5, 0.5)
+logoDot.Position = UDim2.new(0.78, 0, 0.23, 0)
+logoDot.Size = UDim2.new(0, 5, 0, 5)
+logoDot.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
 logoDot.BorderSizePixel = 0
 logoDot.ZIndex = 14
 logoDot.Parent = brandIcon
@@ -330,10 +364,55 @@ local logoDotCorner = Instance.new("UICorner")
 logoDotCorner.CornerRadius = UDim.new(1, 0)
 logoDotCorner.Parent = logoDot
 
+-- Use V-badge logo style for header icon.
+logoCore.Visible = false
+orbit.Visible = false
+logoDot.Visible = false
+
+-- Rebuild visible icon exactly in the reference style.
+brandIcon.Visible = false
+
+local brandBadge = Instance.new("Frame")
+brandBadge.Name = "BrandBadge"
+brandBadge.AnchorPoint = Vector2.new(0.5, 0.5)
+brandBadge.Position = UDim2.new(0.5, 0, 0.5, 0)
+brandBadge.Size = UDim2.new(0, 34, 0, 34)
+brandBadge.BackgroundColor3 = Color3.fromRGB(100, 70, 235)
+brandBadge.BorderSizePixel = 0
+brandBadge.Parent = brandTile
+
+local brandBadgeCorner = Instance.new("UICorner")
+brandBadgeCorner.CornerRadius = UDim.new(0, 11)
+brandBadgeCorner.Parent = brandBadge
+
+local brandBadgeGrad = Instance.new("UIGradient")
+brandBadgeGrad.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(168, 86, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(78, 216, 255)),
+})
+brandBadgeGrad.Rotation = 32
+brandBadgeGrad.Parent = brandBadge
+
+local brandBadgeStroke = Instance.new("UIStroke")
+brandBadgeStroke.Color = Color3.fromRGB(140, 220, 255)
+brandBadgeStroke.Thickness = 1
+brandBadgeStroke.Transparency = 0.25
+brandBadgeStroke.Parent = brandBadge
+
+local brandV = Instance.new("TextLabel")
+brandV.Name = "BrandV"
+brandV.BackgroundTransparency = 1
+brandV.Size = UDim2.new(1, 0, 1, 0)
+brandV.Text = "V"
+brandV.TextColor3 = Color3.fromRGB(229, 236, 255)
+brandV.Font = Enum.Font.GothamBold
+brandV.TextSize = 22
+brandV.Parent = brandBadge
+
 local titleStack = Instance.new("Frame")
 titleStack.Name = "TitleStack"
 titleStack.BackgroundTransparency = 1
-titleStack.Size = UDim2.new(1, -170, 1, 0)
+titleStack.Size = UDim2.new(1, -186, 1, 0)
 titleStack.LayoutOrder = 2
 titleStack.ZIndex = 11
 titleStack.Parent = headerContent
@@ -346,25 +425,25 @@ titleStackLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 titleStackLayout.Parent = titleStack
 
 local title = Instance.new("TextLabel")
-title.Text = "AI Game Builder"
+title.Text = "VibeCoder"
 title.Size = UDim2.new(1, 0, 0, 22)
 title.BackgroundTransparency = 1
 title.TextColor3 = THEME.Text
 title.Font = Enum.Font.SourceSansBold
-title.TextSize = 18
+title.TextSize = 20
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.LayoutOrder = 1
 title.ZIndex = 11
 title.Parent = titleStack
 
 local subtitle = Instance.new("TextLabel")
-subtitle.Text = "Generate, refine, and build directly into your place"
+subtitle.Text = "ROBLOX AI BUILDER"
 subtitle.Size = UDim2.new(1, 0, 0, 16)
 subtitle.BackgroundTransparency = 1
 subtitle.TextColor3 = THEME.Text
-subtitle.TextTransparency = 0.45
-subtitle.Font = Enum.Font.SourceSans
-subtitle.TextSize = 12
+subtitle.TextTransparency = 0.35
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextSize = 11
 subtitle.TextXAlignment = Enum.TextXAlignment.Left
 subtitle.LayoutOrder = 2
 subtitle.ZIndex = 11
@@ -391,6 +470,7 @@ statusPill.TextSize = 12
 statusPill.ZIndex = 12
 statusPill.LayoutOrder = 4
 statusPill.Parent = headerContent
+statusPill.Visible = false
 
 local statusCorner = Instance.new("UICorner")
 statusCorner.CornerRadius = UDim.new(0, 999)
@@ -473,7 +553,7 @@ addSectionLabel(actionsPanel, "Actions").LayoutOrder = 1
 
 local generateBtn = Instance.new("TextButton")
 generateBtn.Text = "Generate"
-generateBtn.Size = UDim2.new(0.5, -4, 0, 36)
+generateBtn.Size = UDim2.new(1, 0, 0, 36)
 generateBtn.Position = UDim2.new(0, 0, 0, 0)
 generateBtn.LayoutOrder = 2
 styleButton(generateBtn, THEME.Primary)
@@ -502,6 +582,7 @@ secondaryRow.BackgroundTransparency = 1
 secondaryRow.Size = UDim2.new(1, 0, 0, 36)
 secondaryRow.LayoutOrder = 3
 secondaryRow.Parent = actionsPanel
+secondaryRow.Visible = false
 
 local secondaryLayout = Instance.new("UIListLayout")
 secondaryLayout.FillDirection = Enum.FillDirection.Horizontal
@@ -510,15 +591,15 @@ secondaryLayout.SortOrder = Enum.SortOrder.LayoutOrder
 secondaryLayout.Padding = UDim.new(0, 8)
 secondaryLayout.Parent = secondaryRow
 
-generateBtn.Parent = secondaryRow
+generateBtn.Parent = actionsPanel
 
 local refineBtn = Instance.new("TextButton")
 refineBtn.Text = "Refine"
-refineBtn.Size = UDim2.new(0.5, -4, 0, 36)
+refineBtn.Size = UDim2.new(0, 0, 0, 36)
 refineBtn.Position = UDim2.new(0, 0, 0, 0)
 refineBtn.LayoutOrder = 1
 styleButton(refineBtn, Color3.fromRGB(33, 40, 64))
-refineBtn.Parent = secondaryRow
+refineBtn.Parent = actionsPanel
 
 local planBtn = Instance.new("TextButton")
 planBtn.Text = "Plan"
@@ -543,6 +624,8 @@ controlLayout.Padding = UDim.new(0, 8)
 controlLayout.HorizontalFlex = Enum.UIFlexAlignment.Fill
 controlLayout.Parent = controlRow
 
+refineBtn.Parent = controlRow
+
 local controlLabel = Instance.new("TextLabel")
 controlLabel.BackgroundTransparency = 1
 controlLabel.Size = UDim2.new(1, 0, 0, 14)
@@ -554,7 +637,7 @@ local clearBtn = Instance.new("TextButton")
 clearBtn.Text = "Clear Build"
 clearBtn.Size = UDim2.new(0, 0, 0, 36)
 clearBtn.Position = UDim2.new(0, 0, 0, 0)
-clearBtn.LayoutOrder = 3
+clearBtn.LayoutOrder = 4
 styleButton(clearBtn, Color3.fromRGB(92, 32, 32)) -- dark red
 do
 	local s = clearBtn:FindFirstChildOfClass("UIStroke")
