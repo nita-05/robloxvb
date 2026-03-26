@@ -103,18 +103,32 @@ redoBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 redoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 redoBtn.Parent = frame
 
+local planScroll = Instance.new("ScrollingFrame")
+planScroll.Name = "PlanScroll"
+planScroll.Size = UDim2.new(1, -20, 0, 110)
+planScroll.Position = UDim2.new(0, 10, 0, 246)
+planScroll.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+planScroll.BorderSizePixel = 0
+planScroll.ScrollBarThickness = 6
+planScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+planScroll.Active = true
+planScroll.ScrollingEnabled = true
+planScroll.Parent = frame
+
 local planBox = Instance.new("TextLabel")
+planBox.Name = "PlanLabel"
 planBox.Text = "Plan will appear here..."
-planBox.Size = UDim2.new(1, -20, 0, 110)
-planBox.Position = UDim2.new(0, 10, 0, 246)
-planBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+planBox.Size = UDim2.new(1, -12, 0, 0)
+planBox.Position = UDim2.new(0, 6, 0, 6)
+planBox.BackgroundTransparency = 1
 planBox.TextColor3 = Color3.fromRGB(200, 200, 200)
 planBox.TextWrapped = true
 planBox.TextXAlignment = Enum.TextXAlignment.Left
 planBox.TextYAlignment = Enum.TextYAlignment.Top
 planBox.Font = Enum.Font.SourceSans
 planBox.TextSize = 14
-planBox.Parent = frame
+planBox.AutomaticSize = Enum.AutomaticSize.Y
+planBox.Parent = planScroll
 
 local logScroll = Instance.new("ScrollingFrame")
 logScroll.Size = UDim2.new(1, -20, 1, -310)
@@ -123,6 +137,8 @@ logScroll.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 logScroll.BorderSizePixel = 0
 logScroll.ScrollBarThickness = 6
 logScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+logScroll.Active = true
+logScroll.ScrollingEnabled = true
 logScroll.Parent = frame
 
 local logBox = Instance.new("TextLabel")
@@ -163,6 +179,12 @@ local function refreshLogScroll()
 			0,
 			math.max(0, logScroll.CanvasSize.Y.Offset - logScroll.AbsoluteWindowSize.Y)
 		)
+	end)
+end
+
+local function refreshPlanScroll()
+	task.defer(function()
+		planScroll.CanvasSize = UDim2.new(0, 0, 0, planBox.TextBounds.Y + 16)
 	end)
 end
 
@@ -212,6 +234,22 @@ local function startProgress(prefix)
 	return function()
 		alive = false
 	end
+end
+
+local function postJson(url, body)
+	local ok, responseOrError = pcall(function()
+		return HttpService:PostAsync(url, HttpService:JSONEncode(body), Enum.HttpContentType.ApplicationJson)
+	end)
+	if not ok then
+		return nil, tostring(responseOrError)
+	end
+	local decodeOk, dataOrError = pcall(function()
+		return HttpService:JSONDecode(responseOrError)
+	end)
+	if not decodeOk then
+		return nil, "Invalid JSON response: " .. tostring(dataOrError)
+	end
+	return dataOrError, nil
 end
 
 local function requestWithTimeout(url, body, timeoutSeconds)
@@ -265,22 +303,6 @@ stopBtn.MouseButton1Click:Connect(function()
 	setButtonsEnabled(true)
 	setLog("Cancelled.")
 end)
-
-local function postJson(url, body)
-	local ok, responseOrError = pcall(function()
-		return HttpService:PostAsync(url, HttpService:JSONEncode(body), Enum.HttpContentType.ApplicationJson)
-	end)
-	if not ok then
-		return nil, tostring(responseOrError)
-	end
-	local decodeOk, dataOrError = pcall(function()
-		return HttpService:JSONDecode(responseOrError)
-	end)
-	if not decodeOk then
-		return nil, "Invalid JSON response: " .. tostring(dataOrError)
-	end
-	return dataOrError, nil
-end
 
 local function getOrCreateFolder(parent, name)
 	local f = parent:FindFirstChild(name)
@@ -617,6 +639,7 @@ planBtn.MouseButton1Click:Connect(function()
 		setLog("Plan request failed: " .. err)
 	else
 		planBox.Text = "🧠 " .. tostring(data.plan or "(empty)")
+		refreshPlanScroll()
 		setLog("Plan updated.")
 	end
 	isBusy = false
