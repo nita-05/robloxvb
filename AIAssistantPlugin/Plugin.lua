@@ -690,9 +690,7 @@ redoBtn.Active = false
 local outputPanel = addPanel(rootScroll, 0)
 outputPanel.LayoutOrder = 3
 outputPanel.AutomaticSize = Enum.AutomaticSize.Y
-outputPanel.Visible = false
-outputPanel.AutomaticSize = Enum.AutomaticSize.None
-outputPanel.Size = UDim2.new(1, 0, 0, 0)
+outputPanel.Visible = true
 
 local outputLayout = Instance.new("UIListLayout")
 outputLayout.FillDirection = Enum.FillDirection.Vertical
@@ -700,7 +698,9 @@ outputLayout.SortOrder = Enum.SortOrder.LayoutOrder
 outputLayout.Padding = UDim.new(0, 6)
 outputLayout.Parent = outputPanel
 
-addSectionLabel(outputPanel, "Output").LayoutOrder = 1
+local outputLabel = addSectionLabel(outputPanel, "Output")
+outputLabel.LayoutOrder = 1
+outputLabel.Visible = false
 
 local outputInner = Instance.new("Frame")
 outputInner.BackgroundTransparency = 1
@@ -727,6 +727,8 @@ planScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 planScroll.Active = true
 planScroll.ScrollingEnabled = true
 planScroll.LayoutOrder = 1
+planScroll.Visible = false
+planScroll.Size = UDim2.new(1, 0, 0, 0)
 
 local planCorner = Instance.new("UICorner")
 planCorner.CornerRadius = UDim.new(0, 8)
@@ -767,7 +769,7 @@ logScroll.ScrollBarImageTransparency = 0.2
 logScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 logScroll.Active = true
 logScroll.ScrollingEnabled = true
-logScroll.LayoutOrder = 2
+logScroll.LayoutOrder = 1
 
 local logCorner = Instance.new("UICorner")
 logCorner.CornerRadius = UDim.new(0, 8)
