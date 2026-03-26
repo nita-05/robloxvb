@@ -1289,8 +1289,9 @@ app.post("/ai-final", async (req, res) => {
 
     // ✅ STRUCTURED BUILD MODE (preferred: safer than executing AI Lua)
     if (structured) {
-        // Fast fallback: return an instant structured template for Generate.
-        if (action === "generate" && fast && preferTemplate) {
+        // Requirement: ONLY Flappy + Survival use instant fallback on initial Generate.
+        // Refinement must always be done by OpenAI (no template fallback).
+        if (action === "generate") {
             const out = structuredTemplateBuildFromPrompt(prompt);
             if (out) {
                 return res.json({
@@ -1362,16 +1363,6 @@ app.post("/ai-final", async (req, res) => {
         const raw = String(aiRes.choices?.[0]?.message?.content || "").trim();
         const parsed = safeJsonParse(raw);
         if (!parsed.ok) {
-            // Fallback to instant template instead of Lua (faster + safer)
-            const out = structuredTemplateBuildFromPrompt(prompt);
-            if (out) {
-                return res.json({
-                    mode: "structured-fallback-template",
-                    message: "⚠️ AI JSON failed; using template fallback.",
-                    structuredError: "Invalid JSON from model",
-                    build: out.build
-                });
-            }
             return res.json({
                 mode: "structured-error",
                 message: "⚠️ Structured mode: invalid JSON.",
@@ -1382,15 +1373,6 @@ app.post("/ai-final", async (req, res) => {
         const out = parsed.value;
         const v = validateStructuredBuild(out.build);
         if (!v.ok) {
-            const out2 = structuredTemplateBuildFromPrompt(prompt);
-            if (out2) {
-                return res.json({
-                    mode: "structured-fallback-template",
-                    message: "⚠️ AI build schema failed; using template fallback.",
-                    structuredError: v.error,
-                    build: out2.build
-                });
-            }
             return res.json({
                 mode: "structured-error",
                 message: "⚠️ Structured mode: invalid build schema.",
