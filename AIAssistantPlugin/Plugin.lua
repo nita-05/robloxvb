@@ -25,18 +25,29 @@ frame.BackgroundColor3 = Color3.fromRGB(43, 43, 43) -- #2B2B2B
 frame.BorderSizePixel = 0
 frame.Parent = widget
 
+local rootScroll = Instance.new("ScrollingFrame")
+rootScroll.Name = "RootScroll"
+rootScroll.Size = UDim2.new(1, 0, 1, 0)
+rootScroll.BackgroundTransparency = 1
+rootScroll.BorderSizePixel = 0
+rootScroll.ScrollBarThickness = 6
+rootScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+rootScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+rootScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+rootScroll.Parent = frame
+
 local rootPadding = Instance.new("UIPadding")
 rootPadding.PaddingTop = UDim.new(0, 10)
 rootPadding.PaddingBottom = UDim.new(0, 10)
 rootPadding.PaddingLeft = UDim.new(0, 10)
 rootPadding.PaddingRight = UDim.new(0, 10)
-rootPadding.Parent = frame
+rootPadding.Parent = rootScroll
 
 local rootLayout = Instance.new("UIListLayout")
 rootLayout.FillDirection = Enum.FillDirection.Vertical
 rootLayout.SortOrder = Enum.SortOrder.LayoutOrder
 rootLayout.Padding = UDim.new(0, 10)
-rootLayout.Parent = frame
+rootLayout.Parent = rootScroll
 
 local function addPanel(parent, height)
 	local panel = Instance.new("Frame")
@@ -134,16 +145,16 @@ title.Font = Enum.Font.SourceSansBold
 title.TextSize = 20
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.LayoutOrder = 1
-title.Parent = frame
+title.Parent = rootScroll
 
 local headerDivider = Instance.new("Frame")
 headerDivider.BackgroundColor3 = Color3.fromRGB(60, 60, 60) -- #3C3C3C
 headerDivider.BorderSizePixel = 0
 headerDivider.Size = UDim2.new(1, 0, 0, 1)
 headerDivider.LayoutOrder = 2
-headerDivider.Parent = frame
+headerDivider.Parent = rootScroll
 
-local promptPanel = addPanel(frame, 120)
+local promptPanel = addPanel(rootScroll, 120)
 promptPanel.LayoutOrder = 3
 
 local promptLayout = Instance.new("UIListLayout")
@@ -189,7 +200,7 @@ promptCorner.Parent = promptBox
 
 promptBox.Parent = promptPanel
 
-local actionsPanel = addPanel(frame, 164)
+local actionsPanel = addPanel(rootScroll, 164)
 actionsPanel.LayoutOrder = 4
 
 local actionsLayout = Instance.new("UIListLayout")
@@ -303,7 +314,7 @@ redoBtn.LayoutOrder = 2
 styleButton(redoBtn, Color3.fromRGB(70, 70, 70))
 redoBtn.Parent = historyRow
 
-local outputPanel = addPanel(frame, 0)
+local outputPanel = addPanel(rootScroll, 0)
 outputPanel.LayoutOrder = 5
 outputPanel.AutomaticSize = Enum.AutomaticSize.Y
 
