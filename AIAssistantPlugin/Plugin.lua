@@ -226,6 +226,7 @@ local ALLOWED_CLASSES = {
 	Part = true,
 	MeshPart = true,
 	SpawnLocation = true,
+	PointLight = true,
 	BillboardGui = true,
 	ScreenGui = true,
 	TextLabel = true,
@@ -246,6 +247,8 @@ local ALLOWED_PROPERTIES = {
 	Material = true,
 	Color = true,
 	BrickColor = true,
+	Brightness = true,
+	Range = true,
 	Size = true,
 	Position = true,
 	CFrame = true,
@@ -453,7 +456,7 @@ planBtn.MouseButton1Click:Connect(function()
 	setButtonsEnabled(false)
 	local stop = startProgress("Planning")
 	local prompt = promptBox.Text
-	local data, err = postJson("http://localhost:3000/plan", { prompt = prompt, fast = true })
+local data, err = postJson("https://assistant-3alw.onrender.com/plan", { prompt = prompt, fast = true })
 	stop()
 	if err then
 		logBox.Text = "Plan request failed: " .. err
@@ -480,7 +483,7 @@ generateBtn.MouseButton1Click:Connect(function()
 	isBusy = true
 	setButtonsEnabled(false)
 	local stop = startProgress("Generating")
-	local data, err = postJson("http://localhost:3000/ai-final", {
+	local data, err = postJson("https://assistant-3alw.onrender.com/ai-final", {
 		prompt = prompt,
 		fast = true,
 		structured = true,
@@ -530,7 +533,7 @@ refineBtn.MouseButton1Click:Connect(function()
 	isBusy = true
 	setButtonsEnabled(false)
 	local stop = startProgress("Refining")
-	local data, err = postJson("http://localhost:3000/ai-final", {
+	local data, err = postJson("https://assistant-3alw.onrender.com/ai-final", {
 		prompt = lastPrompt,
 		fast = true,
 		structured = true,
