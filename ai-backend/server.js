@@ -11,6 +11,14 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
 
+app.get("/", (req, res) => {
+    res.status(200).send("OK");
+});
+
+app.get("/health", (req, res) => {
+    res.status(200).json({ ok: true });
+});
+
 function safeJsonParse(text) {
     try {
         return { ok: true, value: JSON.parse(text) };
