@@ -47,22 +47,10 @@ promptBox.TextXAlignment = Enum.TextXAlignment.Left
 promptBox.TextYAlignment = Enum.TextYAlignment.Top
 promptBox.Parent = frame
 
-local refineBox = Instance.new("TextBox")
-refineBox.PlaceholderText = "Refine instruction (optional)..."
-refineBox.Size = UDim2.new(1, -20, 0, 40)
-refineBox.Position = UDim2.new(0, 10, 0, 110)
-refineBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-refineBox.TextColor3 = Color3.fromRGB(230, 230, 230)
-refineBox.ClearTextOnFocus = false
-refineBox.TextWrapped = true
-refineBox.TextXAlignment = Enum.TextXAlignment.Left
-refineBox.TextYAlignment = Enum.TextYAlignment.Top
-refineBox.Parent = frame
-
 local generateBtn = Instance.new("TextButton")
 generateBtn.Text = "Generate"
 generateBtn.Size = UDim2.new(0.33, -10, 0, 36)
-generateBtn.Position = UDim2.new(0, 10, 0, 160)
+generateBtn.Position = UDim2.new(0, 10, 0, 110)
 generateBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 generateBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 generateBtn.Parent = frame
@@ -70,7 +58,7 @@ generateBtn.Parent = frame
 local refineBtn = Instance.new("TextButton")
 refineBtn.Text = "Refine"
 refineBtn.Size = UDim2.new(0.34, -10, 0, 36)
-refineBtn.Position = UDim2.new(0.33, 5, 0, 160)
+refineBtn.Position = UDim2.new(0.33, 5, 0, 110)
 refineBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 refineBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 refineBtn.Parent = frame
@@ -78,7 +66,7 @@ refineBtn.Parent = frame
 local planBtn = Instance.new("TextButton")
 planBtn.Text = "Plan"
 planBtn.Size = UDim2.new(0.33, -10, 0, 36)
-planBtn.Position = UDim2.new(0.66, 0, 0, 160)
+planBtn.Position = UDim2.new(0.66, 0, 0, 110)
 planBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
 planBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 planBtn.Parent = frame
@@ -86,7 +74,7 @@ planBtn.Parent = frame
 local clearBtn = Instance.new("TextButton")
 clearBtn.Text = "Clear Build"
 clearBtn.Size = UDim2.new(1, -20, 0, 28)
-clearBtn.Position = UDim2.new(0, 10, 0, 200)
+clearBtn.Position = UDim2.new(0, 10, 0, 150)
 clearBtn.BackgroundColor3 = Color3.fromRGB(110, 45, 45)
 clearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 clearBtn.Parent = frame
@@ -94,7 +82,7 @@ clearBtn.Parent = frame
 local planBox = Instance.new("TextLabel")
 planBox.Text = "Plan will appear here..."
 planBox.Size = UDim2.new(1, -20, 0, 110)
-planBox.Position = UDim2.new(0, 10, 0, 270)
+planBox.Position = UDim2.new(0, 10, 0, 190)
 planBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 planBox.TextColor3 = Color3.fromRGB(200, 200, 200)
 planBox.TextWrapped = true
@@ -105,8 +93,8 @@ planBox.TextSize = 14
 planBox.Parent = frame
 
 local logScroll = Instance.new("ScrollingFrame")
-logScroll.Size = UDim2.new(1, -20, 1, -390)
-logScroll.Position = UDim2.new(0, 10, 0, 390)
+logScroll.Size = UDim2.new(1, -20, 1, -310)
+logScroll.Position = UDim2.new(0, 10, 0, 310)
 logScroll.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 logScroll.BorderSizePixel = 0
 logScroll.ScrollBarThickness = 6
@@ -138,6 +126,29 @@ local isBusy = false
 local lastPrompt = ""
 local lastStructuredBuild = nil
 
+local logLines = {}
+local function refreshLogScroll()
+	task.defer(function()
+		logScroll.CanvasSize = UDim2.new(0, 0, 0, logBox.TextBounds.Y + 16)
+		logScroll.CanvasPosition = Vector2.new(
+			0,
+			math.max(0, logScroll.CanvasSize.Y.Offset - logScroll.AbsoluteWindowSize.Y)
+		)
+	end)
+end
+
+local function setLog(text)
+	logLines = { tostring(text or "") }
+	logBox.Text = logLines[1]
+	refreshLogScroll()
+end
+
+local function appendLog(line)
+	table.insert(logLines, tostring(line or ""))
+	logBox.Text = table.concat(logLines, "\n")
+	refreshLogScroll()
+end
+
 local function setButtonsEnabled(enabled)
 	generateBtn.Active = enabled
 	generateBtn.AutoButtonColor = enabled
@@ -159,13 +170,45 @@ local function startProgress(prefix)
 		local dots = 0
 		while alive do
 			dots = (dots % 3) + 1
-			logBox.Text = prefix .. string.rep(".", dots)
+			setLog(prefix .. string.rep(".", dots))
 			task.wait(0.35)
 		end
 	end)
 	return function()
 		alive = false
 	end
+end
+
+local function requestWithTimeout(url, body, timeoutSeconds)
+	local done = false
+	local timedOut = false
+	local resultData = nil
+	local resultErr = nil
+
+	task.spawn(function()
+		local data, err = postJson(url, body)
+		if timedOut then
+			return
+		end
+		done = true
+		resultData = data
+		resultErr = err
+	end)
+
+	task.delay(timeoutSeconds, function()
+		if done then
+			return
+		end
+		timedOut = true
+		resultErr = "Request timed out (Render may be cold-starting). Try again."
+	end)
+
+	-- Wait until either done or timed out
+	while not done and not timedOut do
+		task.wait(0.05)
+	end
+
+	return resultData, resultErr
 end
 
 local function postJson(url, body)
@@ -443,12 +486,15 @@ clearBtn.MouseButton1Click:Connect(function()
 	if isBusy then return end
 	local removed = clearGeneratedBuild()
 	lastStructuredBuild = nil
-	logBox.Text = ("Cleared AI build folders: %d"):format(removed)
+	lastPrompt = ""
+	promptBox.Text = ""
+	promptBox.PlaceholderText = "Describe your game"
+	setLog(("Cleared AI build folders: %d"):format(removed))
 end)
 
 planBtn.MouseButton1Click:Connect(function()
 	if inPlayClientMode() then
-		logBox.Text = "Plan works only in Edit mode. Stop Play and try again."
+		setLog("Plan works only in Edit mode. Stop Play and try again.")
 		return
 	end
 	if isBusy then return end
@@ -456,13 +502,13 @@ planBtn.MouseButton1Click:Connect(function()
 	setButtonsEnabled(false)
 	local stop = startProgress("Planning")
 	local prompt = promptBox.Text
-local data, err = postJson("https://assistant-3alw.onrender.com/plan", { prompt = prompt, fast = true })
+	local data, err = requestWithTimeout("https://assistant-3alw.onrender.com/plan", { prompt = prompt, fast = true }, 25)
 	stop()
 	if err then
-		logBox.Text = "Plan request failed: " .. err
+		setLog("Plan request failed: " .. err)
 	else
 		planBox.Text = "🧠 " .. tostring(data.plan or "(empty)")
-		logBox.Text = "Plan updated."
+		setLog("Plan updated.")
 	end
 	isBusy = false
 	setButtonsEnabled(true)
@@ -470,44 +516,46 @@ end)
 
 generateBtn.MouseButton1Click:Connect(function()
 	if inPlayClientMode() then
-		logBox.Text = "Generate works only in Edit mode. Stop Play and try again."
+		setLog("Generate works only in Edit mode. Stop Play and try again.")
 		return
 	end
 	if isBusy then return end
 	local prompt = promptBox.Text
 	if prompt == "" then
-		logBox.Text = "Enter a game prompt first."
+		setLog("Enter a game prompt first.")
 		return
 	end
 
 	isBusy = true
 	setButtonsEnabled(false)
 	local stop = startProgress("Generating")
-	local data, err = postJson("https://assistant-3alw.onrender.com/ai-final", {
+	local data, err = requestWithTimeout("https://assistant-3alw.onrender.com/ai-final", {
 		prompt = prompt,
 		fast = true,
 		structured = true,
-	})
+	}, 45)
 	stop()
 	if err then
-		logBox.Text = "Generate request failed: " .. err
+		setLog("Generate request failed: " .. err)
 		isBusy = false
 		setButtonsEnabled(true)
 		return
 	end
 
-	logBox.Text = tostring(data.message or "OK")
+	setLog(tostring(data.message or "OK"))
 	if type(data.build) == "table" then
 		local ok, msg = applyStructuredBuild(data.build)
 		if ok then
 			lastPrompt = prompt
 			lastStructuredBuild = data.build
-			logBox.Text = logBox.Text .. "\nDone. " .. msg
+			promptBox.Text = ""
+			promptBox.PlaceholderText = "Type refine instruction, then click Refine"
+			appendLog("Done. " .. msg)
 		else
-			logBox.Text = logBox.Text .. "\nStructured build failed: " .. tostring(msg)
+			appendLog("Structured build failed: " .. tostring(msg))
 		end
 	else
-		logBox.Text = logBox.Text .. "\nNo structured build returned. (Restart backend?)"
+		appendLog("No structured build returned. (Check backend logs / env vars)")
 	end
 
 	isBusy = false
@@ -516,51 +564,52 @@ end)
 
 refineBtn.MouseButton1Click:Connect(function()
 	if inPlayClientMode() then
-		logBox.Text = "Refine works only in Edit mode. Stop Play and try again."
+		setLog("Refine works only in Edit mode. Stop Play and try again.")
 		return
 	end
 	if isBusy then return end
 	if not lastStructuredBuild then
-		logBox.Text = "Generate first, then Refine."
+		setLog("Generate first, then Refine.")
 		return
 	end
-	local instruction = refineBox.Text
+	local instruction = promptBox.Text
 	if instruction == "" then
-		logBox.Text = "Type a refine instruction first."
+		setLog("Type a refine instruction in the top box first.")
 		return
 	end
 
 	isBusy = true
 	setButtonsEnabled(false)
 	local stop = startProgress("Refining")
-	local data, err = postJson("https://assistant-3alw.onrender.com/ai-final", {
+	local data, err = requestWithTimeout("https://assistant-3alw.onrender.com/ai-final", {
 		prompt = lastPrompt,
 		fast = true,
 		structured = true,
 		action = "refine",
 		instruction = instruction,
 		build = lastStructuredBuild,
-	})
+	}, 45)
 	stop()
 	if err then
-		logBox.Text = "Refine request failed: " .. err
+		setLog("Refine request failed: " .. err)
 		isBusy = false
 		setButtonsEnabled(true)
 		return
 	end
 
-	logBox.Text = tostring(data.message or "OK")
+	setLog(tostring(data.message or "OK"))
 	if type(data.build) == "table" then
 		local ok, msg = applyStructuredBuild(data.build)
 		if ok then
 			lastStructuredBuild = data.build
-			refineBox.Text = ""
-			logBox.Text = logBox.Text .. "\nDone. " .. msg
+			promptBox.Text = ""
+			promptBox.PlaceholderText = "Type next refine instruction, then click Refine"
+			appendLog("Done. " .. msg)
 		else
-			logBox.Text = logBox.Text .. "\nStructured build failed: " .. tostring(msg)
+			appendLog("Structured build failed: " .. tostring(msg))
 		end
 	else
-		logBox.Text = logBox.Text .. "\nNo structured build returned. (Restart backend?)"
+		appendLog("No structured build returned. (Check backend logs / env vars)")
 	end
 
 	isBusy = false
