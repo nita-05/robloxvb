@@ -1,0 +1,12 @@
+# dependencies
+node_modules/
+
+# backend secrets
+ai-backend/.env
+
+# cursor
+.cursor/
+.cursorrules/
+
+# logs
+*.log
