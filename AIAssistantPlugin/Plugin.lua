@@ -5,10 +5,10 @@ local widgetInfo = DockWidgetPluginGuiInfo.new(
 	Enum.InitialDockState.Right,
 	true,
 	false,
-	380,
-	560,
-	320,
-	420
+	400,
+	720,
+	340,
+	500
 )
 
 local widget = plugin:CreateDockWidgetPluginGui("AIAssistant", widgetInfo)
@@ -687,8 +687,216 @@ styleButton(redoBtn, THEME.Panel)
 redoBtn.Visible = false
 redoBtn.Active = false
 
+local hybridPanel = addPanel(rootScroll, 0)
+hybridPanel.LayoutOrder = 3
+hybridPanel.AutomaticSize = Enum.AutomaticSize.Y
+
+local hybridLayout = Instance.new("UIListLayout")
+hybridLayout.FillDirection = Enum.FillDirection.Vertical
+hybridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+hybridLayout.Padding = UDim.new(0, 6)
+hybridLayout.Parent = hybridPanel
+
+addSectionLabel(hybridPanel, "Hybrid templates + AI").LayoutOrder = 1
+
+local hybridInfoLabel = Instance.new("TextLabel")
+hybridInfoLabel.BackgroundTransparency = 1
+hybridInfoLabel.Size = UDim2.new(1, 0, 0, 36)
+hybridInfoLabel.Text = "Using templates: — (run Generate Game)"
+hybridInfoLabel.TextColor3 = THEME.Muted
+hybridInfoLabel.TextWrapped = true
+hybridInfoLabel.Font = Enum.Font.SourceSans
+hybridInfoLabel.TextSize = 12
+hybridInfoLabel.TextXAlignment = Enum.TextXAlignment.Left
+hybridInfoLabel.LayoutOrder = 2
+hybridInfoLabel.Parent = hybridPanel
+
+local hybridRow1 = Instance.new("Frame")
+hybridRow1.BackgroundTransparency = 1
+hybridRow1.Size = UDim2.new(1, 0, 0, 36)
+hybridRow1.LayoutOrder = 3
+hybridRow1.Parent = hybridPanel
+
+local hybridRow1Layout = Instance.new("UIListLayout")
+hybridRow1Layout.FillDirection = Enum.FillDirection.Horizontal
+hybridRow1Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+hybridRow1Layout.SortOrder = Enum.SortOrder.LayoutOrder
+hybridRow1Layout.Padding = UDim.new(0, 8)
+hybridRow1Layout.HorizontalFlex = Enum.UIFlexAlignment.Fill
+hybridRow1Layout.Parent = hybridRow1
+
+local hybridGenerateBtn = Instance.new("TextButton")
+hybridGenerateBtn.Text = "Generate Game"
+hybridGenerateBtn.Size = UDim2.new(0, 0, 0, 36)
+hybridGenerateBtn.LayoutOrder = 1
+styleButton(hybridGenerateBtn, Color3.fromRGB(59, 130, 246))
+hybridGenerateBtn.TextColor3 = Color3.fromRGB(240, 248, 255)
+hybridGenerateBtn.Parent = hybridRow1
+
+local hybridRefineBtn = Instance.new("TextButton")
+hybridRefineBtn.Text = "Refine Game"
+hybridRefineBtn.Size = UDim2.new(0, 0, 0, 36)
+hybridRefineBtn.LayoutOrder = 2
+styleButton(hybridRefineBtn, Color3.fromRGB(33, 40, 64))
+hybridRefineBtn.Parent = hybridRow1
+
+local hybridPipelineBtn = Instance.new("TextButton")
+hybridPipelineBtn.Text = "Full pipeline"
+hybridPipelineBtn.Size = UDim2.new(0, 0, 0, 36)
+hybridPipelineBtn.LayoutOrder = 3
+styleButton(hybridPipelineBtn, Color3.fromRGB(28, 95, 78))
+hybridPipelineBtn.TextColor3 = Color3.fromRGB(220, 255, 245)
+hybridPipelineBtn.Parent = hybridRow1
+
+local hybridRow2 = Instance.new("Frame")
+hybridRow2.BackgroundTransparency = 1
+hybridRow2.Size = UDim2.new(1, 0, 0, 36)
+hybridRow2.LayoutOrder = 4
+hybridRow2.Parent = hybridPanel
+
+local hybridRow2Layout = Instance.new("UIListLayout")
+hybridRow2Layout.FillDirection = Enum.FillDirection.Horizontal
+hybridRow2Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+hybridRow2Layout.SortOrder = Enum.SortOrder.LayoutOrder
+hybridRow2Layout.Padding = UDim.new(0, 8)
+hybridRow2Layout.HorizontalFlex = Enum.UIFlexAlignment.Fill
+hybridRow2Layout.Parent = hybridRow2
+
+local hybridAiBoostBtn = Instance.new("TextButton")
+hybridAiBoostBtn.Text = "AI boost: OFF"
+hybridAiBoostBtn.Size = UDim2.new(0, 0, 0, 36)
+hybridAiBoostBtn.LayoutOrder = 1
+styleButton(hybridAiBoostBtn, THEME.Panel)
+hybridAiBoostBtn.Parent = hybridRow2
+
+local hybridForceAiOnlyBtn = Instance.new("TextButton")
+hybridForceAiOnlyBtn.Text = "AI-only: OFF"
+hybridForceAiOnlyBtn.Size = UDim2.new(0, 0, 0, 36)
+hybridForceAiOnlyBtn.LayoutOrder = 2
+styleButton(hybridForceAiOnlyBtn, THEME.Panel)
+hybridForceAiOnlyBtn.Parent = hybridRow2
+
+local hybridClearBtn = Instance.new("TextButton")
+hybridClearBtn.Text = "Clear hybrid"
+hybridClearBtn.Size = UDim2.new(0, 0, 0, 36)
+hybridClearBtn.LayoutOrder = 3
+styleButton(hybridClearBtn, Color3.fromRGB(55, 36, 48))
+hybridClearBtn.Parent = hybridRow2
+
+local hybridRow3 = Instance.new("Frame")
+hybridRow3.BackgroundTransparency = 1
+hybridRow3.Size = UDim2.new(1, 0, 0, 36)
+hybridRow3.LayoutOrder = 5
+hybridRow3.Parent = hybridPanel
+
+local hybridRow3Layout = Instance.new("UIListLayout")
+hybridRow3Layout.FillDirection = Enum.FillDirection.Horizontal
+hybridRow3Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+hybridRow3Layout.SortOrder = Enum.SortOrder.LayoutOrder
+hybridRow3Layout.Padding = UDim.new(0, 8)
+hybridRow3Layout.HorizontalFlex = Enum.UIFlexAlignment.Fill
+hybridRow3Layout.Parent = hybridRow3
+
+local planGameBtn = Instance.new("TextButton")
+planGameBtn.Text = "Plan game"
+planGameBtn.Size = UDim2.new(0, 0, 0, 36)
+planGameBtn.LayoutOrder = 1
+styleButton(planGameBtn, Color3.fromRGB(45, 90, 72))
+planGameBtn.Parent = hybridRow3
+
+local executePlanBtn = Instance.new("TextButton")
+executePlanBtn.Text = "Run plan"
+executePlanBtn.Size = UDim2.new(0, 0, 0, 36)
+executePlanBtn.LayoutOrder = 2
+styleButton(executePlanBtn, Color3.fromRGB(80, 55, 120))
+executePlanBtn.Parent = hybridRow3
+
+local toolboxPanel = addPanel(rootScroll, 0)
+toolboxPanel.LayoutOrder = 4
+toolboxPanel.AutomaticSize = Enum.AutomaticSize.Y
+
+local assetStyle = "realistic"
+
+local toolboxLayout = Instance.new("UIListLayout")
+toolboxLayout.FillDirection = Enum.FillDirection.Vertical
+toolboxLayout.SortOrder = Enum.SortOrder.LayoutOrder
+toolboxLayout.Padding = UDim.new(0, 6)
+toolboxLayout.Parent = toolboxPanel
+
+addSectionLabel(toolboxPanel, "Toolbox assets").LayoutOrder = 1
+
+local assetSceneBox = Instance.new("TextBox")
+assetSceneBox.PlaceholderText = "Describe props to fetch (e.g. modern house, sofa, trees)"
+assetSceneBox.Text = ""
+assetSceneBox.Size = UDim2.new(1, 0, 0, 56)
+assetSceneBox.BackgroundColor3 = THEME.Surface
+assetSceneBox.TextColor3 = THEME.Text
+assetSceneBox.ClearTextOnFocus = false
+assetSceneBox.TextWrapped = true
+assetSceneBox.TextXAlignment = Enum.TextXAlignment.Left
+assetSceneBox.TextYAlignment = Enum.TextYAlignment.Top
+assetSceneBox.Font = Enum.Font.SourceSans
+assetSceneBox.TextSize = 13
+assetSceneBox.LayoutOrder = 2
+assetSceneBox.MultiLine = true
+
+local assetScenePadding = Instance.new("UIPadding")
+assetScenePadding.PaddingTop = UDim.new(0, 6)
+assetScenePadding.PaddingBottom = UDim.new(0, 6)
+assetScenePadding.PaddingLeft = UDim.new(0, 8)
+assetScenePadding.PaddingRight = UDim.new(0, 8)
+assetScenePadding.Parent = assetSceneBox
+
+local assetSceneStroke = Instance.new("UIStroke")
+assetSceneStroke.Color = THEME.Border
+assetSceneStroke.Thickness = 1
+assetSceneStroke.Transparency = 0.35
+assetSceneStroke.Parent = assetSceneBox
+
+local assetSceneCorner = Instance.new("UICorner")
+assetSceneCorner.CornerRadius = UDim.new(0, 8)
+assetSceneCorner.Parent = assetSceneBox
+
+assetSceneBox.Parent = toolboxPanel
+
+local toolboxControlRow = Instance.new("Frame")
+toolboxControlRow.BackgroundTransparency = 1
+toolboxControlRow.Size = UDim2.new(1, 0, 0, 36)
+toolboxControlRow.LayoutOrder = 3
+toolboxControlRow.Parent = toolboxPanel
+
+local toolboxControlLayout = Instance.new("UIListLayout")
+toolboxControlLayout.FillDirection = Enum.FillDirection.Horizontal
+toolboxControlLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+toolboxControlLayout.SortOrder = Enum.SortOrder.LayoutOrder
+toolboxControlLayout.Padding = UDim.new(0, 8)
+toolboxControlLayout.HorizontalFlex = Enum.UIFlexAlignment.Fill
+toolboxControlLayout.Parent = toolboxControlRow
+
+local styleToggleBtn = Instance.new("TextButton")
+styleToggleBtn.Text = "Style: Realistic"
+styleToggleBtn.Size = UDim2.new(0, 0, 0, 36)
+styleToggleBtn.LayoutOrder = 1
+styleButton(styleToggleBtn, Color3.fromRGB(33, 40, 64))
+styleToggleBtn.Parent = toolboxControlRow
+
+local insertAssetsBtn = Instance.new("TextButton")
+insertAssetsBtn.Text = "Insert assets"
+insertAssetsBtn.Size = UDim2.new(0, 0, 0, 36)
+insertAssetsBtn.LayoutOrder = 2
+styleButton(insertAssetsBtn, THEME.Primary2)
+insertAssetsBtn.TextColor3 = Color3.fromRGB(16, 50, 92)
+insertAssetsBtn.Parent = toolboxControlRow
+
+local regenerateAssetsBtn = Instance.new("TextButton")
+regenerateAssetsBtn.Text = "More picks"
+regenerateAssetsBtn.Size = UDim2.new(0, 0, 0, 36)
+regenerateAssetsBtn.LayoutOrder = 3
+styleButton(regenerateAssetsBtn, THEME.Panel)
+regenerateAssetsBtn.Parent = toolboxControlRow
+
 local outputPanel = addPanel(rootScroll, 0)
-outputPanel.LayoutOrder = 3
+outputPanel.LayoutOrder = 5
 outputPanel.AutomaticSize = Enum.AutomaticSize.Y
 outputPanel.Visible = true
 
@@ -799,6 +1007,7 @@ logBox.AutomaticSize = Enum.AutomaticSize.Y
 logBox.Parent = logScroll
 
 local HttpService = game:GetService("HttpService")
+local InsertService = game:GetService("InsertService")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local StarterGui = game:GetService("StarterGui")
@@ -806,6 +1015,20 @@ local StarterPlayer = game:GetService("StarterPlayer")
 local StarterPlayerScripts = StarterPlayer:WaitForChild("StarterPlayerScripts")
 
 local ROOT_FOLDER_NAME = "AI_Build"
+local GENERATED_GAME_NAME = "GeneratedGame"
+
+local API_BASE = "https://assistant-3alw.onrender.com"
+
+local hybridAiBoost = false
+local hybridForceAiOnly = false
+local hybridLastMode = ""
+local hybridLastConfidence = 0
+local hybridLastTemplates = {}
+local hybridLastFeatures = {}
+local hybridLastPrompt = ""
+local hybridScriptNames = {}
+local lastStructuredGamePlan = nil
+local lastPlanPrompt = ""
 
 local isBusy = false
 local lastPrompt = ""
@@ -873,6 +1096,19 @@ local function setButtonsEnabled(enabled)
 
 	setVisual(undoBtn, enabled and (#undoStack > 0))
 	setVisual(redoBtn, enabled and (#redoStack > 0))
+
+	setVisual(styleToggleBtn, enabled)
+	setVisual(insertAssetsBtn, enabled)
+	setVisual(regenerateAssetsBtn, enabled)
+
+	setVisual(hybridGenerateBtn, enabled)
+	setVisual(hybridRefineBtn, enabled)
+	setVisual(hybridPipelineBtn, enabled)
+	setVisual(hybridAiBoostBtn, enabled)
+	setVisual(hybridForceAiOnlyBtn, enabled)
+	setVisual(hybridClearBtn, enabled)
+	setVisual(planGameBtn, enabled)
+	setVisual(executePlanBtn, enabled and (lastStructuredGamePlan ~= nil))
 end
 
 local function inPlayClientMode()
@@ -980,6 +1216,438 @@ local function ensureAiFolders()
 		gui = getOrCreateFolder(StarterGui, ROOT_FOLDER_NAME),
 		starterPlayerScripts = getOrCreateFolder(StarterPlayerScripts, ROOT_FOLDER_NAME),
 	}
+end
+
+local function ensureToolboxFolder()
+	local root = getOrCreateFolder(workspace, ROOT_FOLDER_NAME)
+	return getOrCreateFolder(root, "ToolboxAssets")
+end
+
+local function stripImportedScripts(rootInst)
+	local kill = {}
+	for _, d in ipairs(rootInst:GetDescendants()) do
+		if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ModuleScript") then
+			table.insert(kill, d)
+		end
+	end
+	for _, d in ipairs(kill) do
+		d:Destroy()
+	end
+end
+
+local function layoutInsertedModel(model, index)
+	local spacing = 16
+	local cols = 4
+	local row = math.floor((index - 1) / cols)
+	local col = (index - 1) % cols
+	local cf = CFrame.new(col * spacing, 0, row * spacing)
+	if model:IsA("Model") then
+		local ok = pcall(function()
+			if model.PrimaryPart then
+				model:SetPrimaryPartCFrame(cf)
+			else
+				model:PivotTo(cf)
+			end
+		end)
+		if not ok then
+			pcall(function()
+				model:PivotTo(cf)
+			end)
+		end
+	elseif model:IsA("BasePart") then
+		model.CFrame = cf
+	end
+end
+
+local function insertAssetsFromServerList(assetList)
+	if type(assetList) ~= "table" then
+		return 0, "No asset list"
+	end
+	local folder = ensureToolboxFolder()
+	local placed = 0
+	for _, aid in ipairs(assetList) do
+		local id = nil
+		if type(aid) == "number" and aid > 0 then
+			id = aid
+		elseif type(aid) == "string" then
+			id = tonumber(aid)
+		end
+		if id then
+			local okPack, pack = pcall(function()
+				return InsertService:LoadAsset(id)
+			end)
+			if okPack and pack then
+				local child = pack:GetChildren()[1]
+				if child then
+					stripImportedScripts(child)
+					child.Name = "Toolbox_" .. tostring(id)
+					child.Parent = folder
+					placed += 1
+					layoutInsertedModel(child, placed)
+				else
+					appendLog(("Empty package for asset %s"):format(tostring(id)))
+				end
+				pack:Destroy()
+			else
+				appendLog(("LoadAsset failed for %s: %s"):format(tostring(id), tostring(pack)))
+			end
+		end
+	end
+	return placed, nil
+end
+
+local function tearDownHybridRuntime()
+	local w = workspace:FindFirstChild(GENERATED_GAME_NAME)
+	if w then
+		pcall(function()
+			w:Destroy()
+		end)
+	end
+	local ssf = ServerScriptService:FindFirstChild(GENERATED_GAME_NAME)
+	if ssf then
+		pcall(function()
+			ssf:Destroy()
+		end)
+	end
+	local sps = StarterPlayerScripts:FindFirstChild(GENERATED_GAME_NAME)
+	if sps then
+		pcall(function()
+			sps:Destroy()
+		end)
+	end
+end
+
+local function ensureWorkspaceGeneratedGame()
+	local root = getOrCreateFolder(workspace, GENERATED_GAME_NAME)
+	getOrCreateFolder(root, "Map")
+	getOrCreateFolder(root, "Assets")
+	getOrCreateFolder(root, "NPCs")
+	getOrCreateFolder(root, "Scripts")
+	return root
+end
+
+local function injectHybridScript(spec)
+	if type(spec) ~= "table" then
+		return false
+	end
+	local name = spec.name
+	local parentName = spec.parent
+	local className = spec.className
+	local source = spec.source
+	if type(name) ~= "string" or type(source) ~= "string" then
+		return false
+	end
+	if parentName ~= "ServerScriptService" and parentName ~= "StarterPlayerScripts" then
+		return false
+	end
+	if className ~= "Script" and className ~= "LocalScript" then
+		return false
+	end
+	local trusted = string.sub(name, 1, 7) == "Hybrid_"
+		or string.sub(name, 1, 10) == "HybridExt_"
+		or string.sub(name, 1, 9) == "HybridAI_"
+	if not trusted then
+		return false
+	end
+	local service = (parentName == "ServerScriptService") and ServerScriptService or StarterPlayerScripts
+	local folder = getOrCreateFolder(service, GENERATED_GAME_NAME)
+	local existing = folder:FindFirstChild(name)
+	if existing then
+		existing:Destroy()
+	end
+	local s = Instance.new(className)
+	s.Name = name
+	s.Source = source
+	s.Parent = folder
+	return true
+end
+
+local function insertMergedAssetsIntoGenerated(assetList)
+	if type(assetList) ~= "table" then
+		return 0
+	end
+	ensureWorkspaceGeneratedGame()
+	local root = workspace:FindFirstChild(GENERATED_GAME_NAME)
+	local assetsFolder = root and root:FindFirstChild("Assets")
+	if not assetsFolder then
+		return 0
+	end
+	local placed = 0
+	for _, aid in ipairs(assetList) do
+		local id = nil
+		if type(aid) == "number" and aid > 0 then
+			id = aid
+		elseif type(aid) == "string" then
+			id = tonumber(aid)
+		end
+		if id then
+			local okPack, pack = pcall(function()
+				return InsertService:LoadAsset(id)
+			end)
+			if okPack and pack then
+				local child = pack:GetChildren()[1]
+				if child then
+					stripImportedScripts(child)
+					child.Name = "HybridAsset_" .. tostring(id)
+					child.Parent = assetsFolder
+					placed += 1
+					layoutInsertedModel(child, placed)
+				else
+					appendLog(("Hybrid: empty package for %s"):format(tostring(id)))
+				end
+				pack:Destroy()
+			else
+				appendLog(("Hybrid: LoadAsset failed for %s"):format(tostring(id)))
+			end
+		end
+	end
+	return placed
+end
+
+local function removeHybridScriptsByNames(names)
+	if type(names) ~= "table" then
+		return
+	end
+	for _, folder in ipairs({ ServerScriptService:FindFirstChild(GENERATED_GAME_NAME), StarterPlayerScripts:FindFirstChild(GENERATED_GAME_NAME) }) do
+		if folder then
+			for _, nName in ipairs(names) do
+				if type(nName) == "string" then
+					local ch = folder:FindFirstChild(nName)
+					if ch and string.sub(nName, 1, 10) == "HybridExt_" then
+						ch:Destroy()
+					end
+				end
+			end
+		end
+	end
+end
+
+local function capitalizeWord(w)
+	if w == "" then
+		return w
+	end
+	return string.upper(string.sub(w, 1, 1)) .. string.sub(w, 2)
+end
+
+local function hybridUsingLabelText(templates)
+	if type(templates) ~= "table" or #templates == 0 then
+		return "Using templates: — (run Generate Game)"
+	end
+	local parts = {}
+	for _, t in ipairs(templates) do
+		table.insert(parts, capitalizeWord(tostring(t)))
+	end
+	return "Using templates: " .. table.concat(parts, " + ")
+end
+
+local function hybridInfoFromMode(mode, templates)
+	local m = tostring(mode or "")
+	if m == "ai-only" then
+		return "Using AI full generation mode"
+	end
+	if m == "template+ai" then
+		return hybridUsingLabelText(templates) .. " (partial match — AI layer)"
+	end
+	return hybridUsingLabelText(templates)
+end
+
+local function formatStructuredGamePlan(plan)
+	if type(plan) ~= "table" then
+		return ""
+	end
+	local lines = {}
+	table.insert(lines, "mode: " .. tostring(plan.mode or "?"))
+	if plan.matchTier then
+		table.insert(lines, "matchTier: " .. tostring(plan.matchTier))
+	end
+	if type(plan.reason) == "string" and plan.reason ~= "" then
+		table.insert(lines, "reason: " .. plan.reason)
+	end
+	if type(plan.templates) == "table" and #plan.templates > 0 then
+		table.insert(lines, "templates: " .. table.concat(plan.templates, ", "))
+	end
+	if type(plan.features) == "table" and #plan.features > 0 then
+		table.insert(lines, "features: " .. table.concat(plan.features, "; "))
+	end
+	if type(plan.assets) == "table" and #plan.assets > 0 then
+		table.insert(lines, "assets: " .. table.concat(plan.assets, "; "))
+	end
+	if plan.placement_strategy then
+		table.insert(lines, "placement: " .. tostring(plan.placement_strategy))
+	end
+	if type(plan.script_requirements) == "table" and #plan.script_requirements > 0 then
+		table.insert(lines, "script_requirements: " .. table.concat(plan.script_requirements, "; "))
+	end
+	if type(plan.steps) == "table" and #plan.steps > 0 then
+		table.insert(lines, "--- steps ---")
+		for i, s in ipairs(plan.steps) do
+			table.insert(lines, ("%d. %s"):format(i, tostring(s)))
+		end
+	end
+	return table.concat(lines, "\n")
+end
+
+local function applyHybridMerged(merged)
+	tearDownHybridRuntime()
+	ensureWorkspaceGeneratedGame()
+	local scriptOk = 0
+	if type(merged) == "table" and type(merged.scripts) == "table" then
+		for _, spec in ipairs(merged.scripts) do
+			if injectHybridScript(spec) then
+				scriptOk += 1
+			end
+		end
+	end
+	local assetN = 0
+	if type(merged) == "table" and type(merged.assets) == "table" then
+		assetN = insertMergedAssetsIntoGenerated(merged.assets)
+	end
+	return scriptOk, assetN
+end
+
+local function rebuildHybridScriptNameList(merged)
+	hybridScriptNames = {}
+	if type(merged) == "table" and type(merged.scripts) == "table" then
+		for _, spec in ipairs(merged.scripts) do
+			if type(spec) == "table" and type(spec.name) == "string" then
+				table.insert(hybridScriptNames, spec.name)
+			end
+		end
+	end
+end
+
+local function appendHybridRefinement(payload)
+	if type(payload) ~= "table" then
+		return
+	end
+	if type(payload.removeScriptNames) == "table" then
+		removeHybridScriptsByNames(payload.removeScriptNames)
+		for _, nName in ipairs(payload.removeScriptNames) do
+			for i = #hybridScriptNames, 1, -1 do
+				if hybridScriptNames[i] == nName then
+					table.remove(hybridScriptNames, i)
+				end
+			end
+		end
+	end
+	if type(payload.appendScripts) == "table" then
+		for _, spec in ipairs(payload.appendScripts) do
+			if injectHybridScript(spec) and type(spec.name) == "string" then
+				table.insert(hybridScriptNames, spec.name)
+			end
+		end
+	end
+	if type(payload.addAssets) == "table" and #payload.addAssets > 0 then
+		ensureWorkspaceGeneratedGame()
+		local nAdded = insertMergedAssetsIntoGenerated(payload.addAssets)
+		appendLog(("Refine: added %d asset(s)"):format(nAdded))
+	end
+end
+
+local function runGamePlanExecution()
+	local plan = lastStructuredGamePlan
+	local promptText = lastPlanPrompt
+	if not plan or promptText == "" then
+		setLog('Run "Plan game" first (no saved plan).')
+		return
+	end
+	if inPlayClientMode() then
+		setLog("Run plan works only in Edit mode. Stop Play and try again.")
+		return
+	end
+	if isBusy then
+		return
+	end
+	local myToken = cancelToken
+	isBusy = true
+	setButtonsEnabled(false)
+	setLog("Executing plan steps...")
+	task.spawn(function()
+		for i, step in ipairs(plan.steps or {}) do
+			if cancelToken ~= myToken then
+				break
+			end
+			appendLog(("Step %d: %s"):format(i, tostring(step)))
+			task.wait(0.22)
+		end
+		if cancelToken ~= myToken then
+			isBusy = false
+			setButtonsEnabled(true)
+			return
+		end
+		appendLog("Importing assets from plan keywords...")
+		local assetLine = ""
+		if type(plan.assets) == "table" and #plan.assets > 0 then
+			assetLine = table.concat(plan.assets, ", ")
+		end
+		if assetLine ~= "" then
+			local dataA, errA = requestWithTimeout(API_BASE .. "/generate-assets", {
+				prompt = assetLine,
+				style = assetStyle,
+				regenerate = false,
+				maxAssets = 12,
+			}, 40)
+			if errA then
+				appendLog("Asset import failed: " .. errA)
+			elseif type(dataA) == "table" and dataA.success ~= false and type(dataA.assets) == "table" then
+				local placedA = insertMergedAssetsIntoGenerated(dataA.assets)
+				appendLog(("Placed %d asset(s) into GeneratedGame.Assets"):format(placedA))
+			end
+		else
+			appendLog("No asset list in plan; skipping import.")
+		end
+		if cancelToken ~= myToken then
+			isBusy = false
+			setButtonsEnabled(true)
+			return
+		end
+		appendLog("Running hybrid build (templates + scripts)...")
+		local data, err = requestWithTimeout(API_BASE .. "/hybrid-generate", {
+			prompt = promptText,
+			enhance = hybridAiBoost,
+			forceAiOnly = hybridForceAiOnly,
+		}, 50)
+		if cancelToken ~= myToken then
+			isBusy = false
+			setButtonsEnabled(true)
+			return
+		end
+		if err then
+			setLog("Hybrid generate failed: " .. err)
+			isBusy = false
+			setButtonsEnabled(true)
+			return
+		end
+		if type(data) == "table" and data.success == false then
+			setLog("Hybrid generate failed: " .. tostring(data.error))
+			isBusy = false
+			setButtonsEnabled(true)
+			return
+		end
+		hybridLastPrompt = promptText
+		hybridLastMode = tostring(data.mode or "template")
+		hybridLastConfidence = tonumber(data.confidence) or tonumber(data.confidencePercent) or 0
+		hybridLastTemplates = data.templates or {}
+		hybridLastFeatures = data.features or {}
+		local merged = data.merged or {}
+		local sOk, aN = applyHybridMerged(merged)
+		rebuildHybridScriptNameList(merged)
+		hybridInfoLabel.Text = hybridInfoFromMode(hybridLastMode, hybridLastTemplates)
+		hybridInfoLabel.TextColor3 = THEME.Text
+		setLog("Plan execution finished.")
+		appendLog(("Scripts injected: %d | Merged asset slots: %d"):format(sOk, aN))
+		if type(data.reason) == "string" and data.reason ~= "" then
+			appendLog("Classifier: " .. data.reason)
+		end
+		if data.forcedAiFallback == true then
+			appendLog("AI-only fallback: template merge skipped; see classifierRouting.")
+		end
+		if type(data.message) == "string" and data.message ~= "" then
+			appendLog(data.message)
+		end
+		isBusy = false
+		setButtonsEnabled(true)
+	end)
 end
 
 local function clearGeneratedBuild()
@@ -1288,7 +1956,7 @@ planBtn.MouseButton1Click:Connect(function()
 	setButtonsEnabled(false)
 	local stop = startProgress("Planning")
 	local prompt = promptBox.Text
-	local data, err = requestWithTimeout("https://assistant-3alw.onrender.com/plan", { prompt = prompt, fast = true }, 25)
+	local data, err = requestWithTimeout(API_BASE .. "/plan", { prompt = prompt, fast = true }, 25)
 	stop()
 	if cancelToken ~= myToken then
 		return
@@ -1320,7 +1988,7 @@ generateBtn.MouseButton1Click:Connect(function()
 	isBusy = true
 	setButtonsEnabled(false)
 	local stop = startProgress("Generating")
-	local data, err = requestWithTimeout("https://assistant-3alw.onrender.com/ai-final", {
+	local data, err = requestWithTimeout(API_BASE .. "/ai-final", {
 		prompt = prompt,
 		fast = true,
 		structured = true,
@@ -1376,7 +2044,7 @@ refineBtn.MouseButton1Click:Connect(function()
 	isBusy = true
 	setButtonsEnabled(false)
 	local stop = startProgress("Refining")
-	local data, err = requestWithTimeout("https://assistant-3alw.onrender.com/ai-final", {
+	local data, err = requestWithTimeout(API_BASE .. "/ai-final", {
 		prompt = lastPrompt,
 		fast = true,
 		structured = true,
@@ -1410,6 +2078,465 @@ refineBtn.MouseButton1Click:Connect(function()
 		appendLog("No structured build returned. (Check backend logs / env vars)")
 	end
 
+	isBusy = false
+	setButtonsEnabled(true)
+end)
+
+styleToggleBtn.MouseButton1Click:Connect(function()
+	if isBusy then
+		return
+	end
+	if assetStyle == "realistic" then
+		assetStyle = "cartoon"
+		styleToggleBtn.Text = "Style: Cartoon"
+	else
+		assetStyle = "realistic"
+		styleToggleBtn.Text = "Style: Realistic"
+	end
+end)
+
+local function runToolboxAssetRequest(regenerate)
+	if inPlayClientMode() then
+		setLog("Toolbox insert works only in Edit mode. Stop Play and try again.")
+		return
+	end
+	if isBusy then
+		return
+	end
+	if assetSceneBox.Text == "" then
+		setLog("Enter a Toolbox scene description first.")
+		return
+	end
+	local myToken = cancelToken
+	isBusy = true
+	setButtonsEnabled(false)
+	local stop = startProgress(regenerate and "More asset picks" or "Picking assets")
+	local data, err = requestWithTimeout(API_BASE .. "/generate-assets", {
+		prompt = assetSceneBox.Text,
+		style = assetStyle,
+		regenerate = regenerate,
+		maxAssets = 10,
+	}, 35)
+	stop()
+	if cancelToken ~= myToken then
+		return
+	end
+	if err then
+		setLog("Assets request failed: " .. err)
+		isBusy = false
+		setButtonsEnabled(true)
+		return
+	end
+	if type(data) == "table" and data.success == false then
+		setLog("Assets request failed: " .. tostring(data.error))
+		isBusy = false
+		setButtonsEnabled(true)
+		return
+	end
+	setLog("Toolbox assets ready.")
+	if type(data.keywords) == "table" and #data.keywords > 0 then
+		appendLog("Keywords: " .. table.concat(data.keywords, ", "))
+	end
+	local placed = insertAssetsFromServerList(data.assets)
+	appendLog(("Inserted %d model(s) under Workspace.%s.ToolboxAssets."):format(placed, ROOT_FOLDER_NAME))
+	isBusy = false
+	setButtonsEnabled(true)
+end
+
+insertAssetsBtn.MouseButton1Click:Connect(function()
+	runToolboxAssetRequest(false)
+end)
+
+regenerateAssetsBtn.MouseButton1Click:Connect(function()
+	runToolboxAssetRequest(true)
+end)
+
+hybridAiBoostBtn.MouseButton1Click:Connect(function()
+	if isBusy then
+		return
+	end
+	hybridAiBoost = not hybridAiBoost
+	hybridAiBoostBtn.Text = hybridAiBoost and "AI boost: ON" or "AI boost: OFF"
+end)
+
+hybridForceAiOnlyBtn.MouseButton1Click:Connect(function()
+	if isBusy then
+		return
+	end
+	hybridForceAiOnly = not hybridForceAiOnly
+	hybridForceAiOnlyBtn.Text = hybridForceAiOnly and "AI-only: ON" or "AI-only: OFF"
+end)
+
+hybridClearBtn.MouseButton1Click:Connect(function()
+	if isBusy then
+		return
+	end
+	tearDownHybridRuntime()
+	hybridLastMode = ""
+	hybridLastConfidence = 0
+	hybridLastTemplates = {}
+	hybridLastFeatures = {}
+	hybridLastPrompt = ""
+	hybridScriptNames = {}
+	hybridForceAiOnly = false
+	hybridForceAiOnlyBtn.Text = "AI-only: OFF"
+	lastStructuredGamePlan = nil
+	lastPlanPrompt = ""
+	hybridInfoLabel.Text = "Using templates: — (run Generate Game)"
+	hybridInfoLabel.TextColor3 = THEME.Muted
+	planBox.Text = "Plan will appear here..."
+	planScroll.Visible = false
+	setLog("Cleared hybrid GeneratedGame (workspace + services).")
+end)
+
+planGameBtn.MouseButton1Click:Connect(function()
+	if inPlayClientMode() then
+		setLog("Plan game works only in Edit mode. Stop Play and try again.")
+		return
+	end
+	if isBusy then
+		return
+	end
+	if promptBox.Text == "" then
+		setLog("Enter a game prompt first.")
+		return
+	end
+	local myToken = cancelToken
+	isBusy = true
+	setButtonsEnabled(false)
+	local stop = startProgress("Planning game")
+	local data, err = requestWithTimeout(API_BASE .. "/plan-game", {
+		prompt = promptBox.Text,
+	}, 45)
+	stop()
+	if cancelToken ~= myToken then
+		isBusy = false
+		setButtonsEnabled(true)
+		return
+	end
+	if err then
+		setLog("Plan game failed: " .. err)
+		isBusy = false
+		setButtonsEnabled(true)
+		return
+	end
+	if type(data) == "table" and data.success == false then
+		setLog("Plan game failed: " .. tostring(data.error))
+		isBusy = false
+		setButtonsEnabled(true)
+		return
+	end
+	lastStructuredGamePlan = data
+	lastPlanPrompt = promptBox.Text
+	planBox.Text = formatStructuredGamePlan(data)
+	planScroll.Visible = true
+	planScroll.Size = UDim2.new(1, 0, 0, 180)
+	refreshPlanScroll()
+	setLog("Planning game... done.")
+	local conf = tonumber(data.confidence) or tonumber(data.confidencePercent) or 0
+	local mt = ""
+	if type(data.matchTier) == "string" and data.matchTier ~= "" then
+		mt = (" | tier: %s"):format(data.matchTier)
+	end
+	appendLog(
+		("Mode: %s | Template fit ~%d%%%s%s"):format(
+			tostring(data.mode or "?"),
+			conf,
+			mt,
+			data.cached and " | cached plan" or ""
+		)
+	)
+	if type(data.reason) == "string" and data.reason ~= "" then
+		appendLog("Classifier: " .. data.reason)
+	end
+	isBusy = false
+	setButtonsEnabled(true)
+end)
+
+executePlanBtn.MouseButton1Click:Connect(function()
+	runGamePlanExecution()
+end)
+
+hybridGenerateBtn.MouseButton1Click:Connect(function()
+	if inPlayClientMode() then
+		setLog("Hybrid generate works only in Edit mode. Stop Play and try again.")
+		return
+	end
+	if isBusy then
+		return
+	end
+	if promptBox.Text == "" then
+		setLog("Describe your game in the Prompt box first.")
+		return
+	end
+	local myToken = cancelToken
+	isBusy = true
+	setButtonsEnabled(false)
+	local stop = startProgress("Hybrid generate")
+	local data, err = requestWithTimeout(API_BASE .. "/hybrid-generate", {
+		prompt = promptBox.Text,
+		enhance = hybridAiBoost,
+		forceAiOnly = hybridForceAiOnly,
+	}, 45)
+	stop()
+	if cancelToken ~= myToken then
+		return
+	end
+	if err then
+		setLog("Hybrid generate failed: " .. err)
+		isBusy = false
+		setButtonsEnabled(true)
+		return
+	end
+	if type(data) == "table" and data.success == false then
+		setLog("Hybrid generate failed: " .. tostring(data.error))
+		isBusy = false
+		setButtonsEnabled(true)
+		return
+	end
+	hybridLastPrompt = promptBox.Text
+	hybridLastMode = tostring(data.mode or "template")
+	hybridLastConfidence = tonumber(data.confidence) or 0
+	hybridLastTemplates = data.templates or {}
+	hybridLastFeatures = data.features or {}
+	local merged = data.merged or {}
+	local sOk, aN = applyHybridMerged(merged)
+	rebuildHybridScriptNameList(merged)
+	hybridInfoLabel.Text = hybridInfoFromMode(hybridLastMode, hybridLastTemplates)
+	hybridInfoLabel.TextColor3 = THEME.Text
+	setLog("Hybrid game scaffold ready.")
+	if not lastStructuredGamePlan or lastPlanPrompt ~= promptBox.Text then
+		appendLog('Tip: run "Plan game" first for a structured blueprint aligned to this prompt.')
+	end
+	local tierNote = ""
+	if type(data.matchTier) == "string" and data.matchTier ~= "" then
+		tierNote = (" | tier: %s"):format(data.matchTier)
+	end
+	appendLog(("Mode: %s (template fit ~%d%%)%s%s"):format(
+		hybridLastMode,
+		hybridLastConfidence,
+		tierNote,
+		data.routingCached and " [cached routing]" or ""
+	))
+	if type(data.reason) == "string" and data.reason ~= "" then
+		appendLog("Classifier: " .. data.reason)
+	end
+	if data.forcedAiFallback == true then
+		appendLog("AI-only fallback: template merge skipped; see classifierRouting in API response.")
+	end
+	appendLog(("Scripts injected: %d | Assets placed: %d"):format(sOk, aN))
+	if hybridLastMode == "ai-only" and type(data.assetKeywords) == "table" and #data.assetKeywords > 0 then
+		appendLog("Asset keywords: " .. table.concat(data.assetKeywords, ", "))
+	end
+	if type(data.message) == "string" and data.message ~= "" then
+		appendLog(data.message)
+	end
+	if type(data.preMerge) == "table" then
+		local pm = data.preMerge
+		if pm.okToMerge == false then
+			appendLog("Pre-merge: not OK to merge — see blockingIssues in API / log.")
+		elseif type(pm.scriptConflicts) == "table" and #pm.scriptConflicts > 0 then
+			appendLog(("Pre-merge: %d script slot note(s) (later template wins where names clash)."):format(#pm.scriptConflicts))
+		end
+	end
+	if hybridLastMode == "template" and hybridAiBoost then
+		appendLog("AI boost may add HybridExt_* scripts when the model returns them.")
+	elseif hybridLastMode == "template+ai" then
+		appendLog("Partial template match: base pack + required AI hybrid layer.")
+	end
+	isBusy = false
+	setButtonsEnabled(true)
+end)
+
+hybridPipelineBtn.MouseButton1Click:Connect(function()
+	if inPlayClientMode() then
+		setLog("Full pipeline works only in Edit mode. Stop Play and try again.")
+		return
+	end
+	if isBusy then
+		return
+	end
+	if promptBox.Text == "" then
+		setLog("Describe your game in the Prompt box first.")
+		return
+	end
+	local myToken = cancelToken
+	isBusy = true
+	setButtonsEnabled(false)
+	local stop = startProgress("Pipeline")
+	local data, err = requestWithTimeout(API_BASE .. "/pipeline-generate", {
+		prompt = promptBox.Text,
+		enhance = hybridAiBoost,
+		alwaysRefine = true,
+		forceAiOnly = hybridForceAiOnly,
+	}, 90)
+	stop()
+	if cancelToken ~= myToken then
+		isBusy = false
+		setButtonsEnabled(true)
+		return
+	end
+	if err then
+		setLog("Pipeline failed: " .. err)
+		isBusy = false
+		setButtonsEnabled(true)
+		return
+	end
+	if type(data) == "table" and data.success == false then
+		setLog("Pipeline failed: " .. tostring(data.error))
+		isBusy = false
+		setButtonsEnabled(true)
+		return
+	end
+	hybridLastPrompt = promptBox.Text
+	hybridLastMode = tostring(data.mode or "template")
+	hybridLastConfidence = tonumber(data.confidence) or tonumber(data.confidencePercent) or 0
+	hybridLastTemplates = data.templates or {}
+	hybridLastFeatures = data.features or {}
+	local merged = data.mergedFinal or {}
+	local sOk, aN = applyHybridMerged(merged)
+	rebuildHybridScriptNameList(merged)
+	if type(data.refinement) == "table" and type(data.refinement.removeScriptNames) == "table" then
+		removeHybridScriptsByNames(data.refinement.removeScriptNames)
+	end
+	hybridInfoLabel.Text = hybridInfoFromMode(hybridLastMode, hybridLastTemplates)
+	hybridInfoLabel.TextColor3 = THEME.Text
+	setLog("Full pipeline finished (generate → refine → recheck).")
+	if type(data.recheckCyclesUsed) == "number" and type(data.recheckCycleLimit) == "number" then
+		appendLog(("Recheck cycles: %d / %d (max)"):format(data.recheckCyclesUsed, data.recheckCycleLimit))
+	end
+	local pTier = ""
+	if type(data.matchTier) == "string" and data.matchTier ~= "" then
+		pTier = (" | tier: %s"):format(data.matchTier)
+	end
+	appendLog(("Mode: %s | Template fit ~%d%%%s"):format(hybridLastMode, hybridLastConfidence, pTier))
+	if type(data.reason) == "string" and data.reason ~= "" then
+		appendLog("Classifier: " .. data.reason)
+	end
+	if data.forcedAiFallback == true then
+		appendLog("AI-only fallback: template merge skipped; see classifierRouting.")
+	end
+	appendLog(("Scripts injected: %d | Assets placed: %d"):format(sOk, aN))
+	if type(data.smartLoopHint) == "string" and data.smartLoopHint ~= "" then
+		appendLog("Smart loop: " .. data.smartLoopHint)
+	end
+	if data.recheckRouting and type(data.recheckRouting.mode) == "string" then
+		appendLog("After refine, classifier mode: " .. data.recheckRouting.mode)
+	end
+	if data.recheckRouting and type(data.recheckRouting.reason) == "string" and data.recheckRouting.reason ~= "" then
+		appendLog("Recheck: " .. data.recheckRouting.reason)
+	end
+	if type(data.message) == "string" and data.message ~= "" then
+		appendLog(data.message)
+	end
+	if type(data.preMerge) == "table" then
+		local pm = data.preMerge
+		if pm.okToMerge == false then
+			appendLog("Pre-merge: not OK to merge — see blockingIssues.")
+		elseif type(pm.scriptConflicts) == "table" and #pm.scriptConflicts > 0 then
+			appendLog(("Pre-merge: %d script slot note(s)."):format(#pm.scriptConflicts))
+		end
+	end
+	if hybridLastMode == "ai-only" and type(data.assetKeywords) == "table" and #data.assetKeywords > 0 then
+		appendLog("Asset keywords: " .. table.concat(data.assetKeywords, ", "))
+	end
+	if type(data.refinement) == "table" and type(data.refinement.message) == "string" and data.refinement.message ~= "" then
+		appendLog("Refine: " .. data.refinement.message)
+	end
+	isBusy = false
+	setButtonsEnabled(true)
+end)
+
+hybridRefineBtn.MouseButton1Click:Connect(function()
+	if inPlayClientMode() then
+		setLog("Hybrid refine works only in Edit mode. Stop Play and try again.")
+		return
+	end
+	if isBusy then
+		return
+	end
+	if hybridLastPrompt == "" then
+		setLog('Run hybrid "Generate Game" first.')
+		return
+	end
+	local instruction = promptBox.Text
+	if instruction == "" then
+		setLog("Type a refine instruction in the Prompt box (e.g. make it scarier).")
+		return
+	end
+	local myToken = cancelToken
+	isBusy = true
+	setButtonsEnabled(false)
+	local stop = startProgress("Refine: template check")
+	local data, err = requestWithTimeout(API_BASE .. "/refine-game", {
+		prompt = hybridLastPrompt,
+		instruction = instruction,
+		templates = hybridLastTemplates,
+		features = hybridLastFeatures,
+		scriptNames = hybridScriptNames,
+		generationMode = hybridLastMode,
+	}, 45)
+	stop()
+	if cancelToken ~= myToken then
+		isBusy = false
+		setButtonsEnabled(true)
+		return
+	end
+	if err then
+		setLog("Hybrid refine failed: " .. err)
+		isBusy = false
+		setButtonsEnabled(true)
+		return
+	end
+	if type(data) == "table" and data.success == false then
+		setLog("Hybrid refine failed: " .. tostring(data.error))
+		isBusy = false
+		setButtonsEnabled(true)
+		return
+	end
+	local path = tostring(data.path or "ai_refine")
+	if path == "template_merge" and type(data.merged) == "table" then
+		if type(data.routing) == "table" then
+			hybridLastMode = tostring(data.routing.mode or "template")
+			hybridLastConfidence = tonumber(data.routing.confidence) or tonumber(data.routing.confidencePercent) or hybridLastConfidence
+			if type(data.routing.templates) == "table" then
+				hybridLastTemplates = data.routing.templates
+			end
+			if type(data.routing.features) == "table" then
+				hybridLastFeatures = data.routing.features
+			end
+		end
+		local sOk, aN = applyHybridMerged(data.merged)
+		rebuildHybridScriptNameList(data.merged)
+		hybridInfoLabel.Text = hybridInfoFromMode(hybridLastMode, hybridLastTemplates)
+		hybridInfoLabel.TextColor3 = THEME.Text
+		setLog(tostring(data.message or "Template merge applied."))
+		appendLog(("Refine path: template_merge | scripts: %d | assets: %d"):format(sOk, aN))
+	elseif path == "template_hybrid_refine" and type(data.merged) == "table" then
+		if type(data.routing) == "table" then
+			hybridLastMode = tostring(data.routing.mode or "template")
+			hybridLastConfidence = tonumber(data.routing.confidence) or tonumber(data.routing.confidencePercent) or hybridLastConfidence
+			if type(data.routing.templates) == "table" then
+				hybridLastTemplates = data.routing.templates
+			end
+			if type(data.routing.features) == "table" then
+				hybridLastFeatures = data.routing.features
+			end
+		end
+		local sOk, aN = applyHybridMerged(data.merged)
+		rebuildHybridScriptNameList(data.merged)
+		appendHybridRefinement(data)
+		hybridInfoLabel.Text = hybridInfoFromMode(hybridLastMode, hybridLastTemplates)
+		hybridInfoLabel.TextColor3 = THEME.Text
+		setLog(tostring(data.message or "Template + AI refine applied."))
+		appendLog(
+			("Refine path: template_hybrid_refine | base scripts: %d | base assets: %d"):format(sOk, aN)
+		)
+	else
+		appendHybridRefinement(data)
+		setLog(tostring(data.message or "Hybrid refine applied."))
+		appendLog("Refine path: ai_refine (HybridExt_* append/remove).")
+	end
 	isBusy = false
 	setButtonsEnabled(true)
 end)
