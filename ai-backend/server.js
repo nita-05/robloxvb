@@ -1511,7 +1511,6 @@ Only output Lua code.`
 
 require("./routes/generateAssets")(app, { openai, stripCodeFences, safeJsonParse });
 require("./routes/hybridGame")(app, { openai, stripCodeFences, safeJsonParse });
-require("./routes/planGame")(app, { openai, stripCodeFences, safeJsonParse });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("🔥 Master AI running on", PORT));
