@@ -90,7 +90,8 @@ module.exports = function registerGenerateAssets(app, deps) {
             return res.json(payload);
         } catch (e) {
             console.error("[generate-assets]", e);
-            return res.status(500).json({
+            // Return HTTP 200 so the Studio plugin can read the error payload.
+            return res.json({
                 success: false,
                 error: e instanceof Error ? e.message : "internal error",
             });
