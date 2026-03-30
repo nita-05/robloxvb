@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const OpenAI = require("openai");
+const models = require("./config/models");
 
 const app = express();
 app.use(cors());
@@ -1171,7 +1172,7 @@ app.post("/ai", async (req, res) => {
         const baseCode = getTemplate(type);
 
         const aiRes = await openai.chat.completions.create({
-            model: "gpt-5.3-chat-latest",
+            model: models.CHAT,
             messages: [
                 {
                     role: "system",
@@ -1213,7 +1214,7 @@ app.post("/plan", async (req, res) => {
     }
 
     const completion = await openai.chat.completions.create({
-        model: "gpt-5.4",
+        model: models.PLANNER,
         messages: [
             {
                 role: "system",
@@ -1246,7 +1247,7 @@ app.post("/generateStep", async (req, res) => {
     }
 
     const completion = await openai.chat.completions.create({
-        model: "gpt-5.3-chat-latest",
+        model: models.CHAT,
         messages: [
             {
                 role: "system",
@@ -1329,7 +1330,7 @@ app.post("/ai-final", async (req, res) => {
 
         const aiRes = await withRetries(
             () => openai.chat.completions.create({
-                model: "gpt-5.3-chat-latest",
+                model: models.CHAT,
                 messages: [
                     {
                         role: "system",
@@ -1393,7 +1394,7 @@ app.post("/ai-final", async (req, res) => {
         const mergedTemplate = getMergedTemplate(types);
 
         const aiRes = await openai.chat.completions.create({
-            model: "gpt-5.3-chat-latest",
+            model: models.CHAT,
             messages: [
                 {
                     role: "system",
@@ -1431,7 +1432,7 @@ app.post("/ai-final", async (req, res) => {
             plan = quickPlanFromPrompt(prompt);
 
             const codeRes = await openai.chat.completions.create({
-                model: "gpt-5.3-chat-latest",
+                model: models.CHAT,
                 messages: [
                     {
                         role: "system",
@@ -1462,7 +1463,7 @@ app.post("/ai-final", async (req, res) => {
 
         // 🧠 STEP 1: PLAN
         const planRes = await openai.chat.completions.create({
-            model: "gpt-5.4",
+            model: models.PLANNER,
             messages: [
                 {
                     role: "system",
@@ -1479,7 +1480,7 @@ app.post("/ai-final", async (req, res) => {
 
         // 💻 STEP 2: GENERATE CODE FROM PLAN
         const codeRes = await openai.chat.completions.create({
-            model: "gpt-5.3-chat-latest",
+            model: models.CHAT,
             messages: [
                 {
                     role: "system",
@@ -1507,6 +1508,10 @@ Only output Lua code.`
     }
 });
 
+
+require("./routes/generateAssets")(app, { openai, stripCodeFences, safeJsonParse });
+require("./routes/hybridGame")(app, { openai, stripCodeFences, safeJsonParse });
+require("./routes/planGame")(app, { openai, stripCodeFences, safeJsonParse });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("🔥 Master AI running on", PORT));

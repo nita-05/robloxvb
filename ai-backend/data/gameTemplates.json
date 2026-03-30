@@ -1,0 +1,73 @@
+{
+  "_note": "scriptRefs.file paths are relative to templates/lua/. Curate assets[] for your account.",
+  "_compatibility": {
+    "incompatiblePairs": [],
+    "comment": "Add pairs like [\"racing\",\"simulator\"] if two templates must not ship together."
+  },
+  "obby": {
+    "label": "Obby / parkour",
+    "assets": [],
+    "scriptRefs": [
+      {
+        "name": "Hybrid_ObbyCore",
+        "parent": "ServerScriptService",
+        "className": "Script",
+        "file": "obby_core.lua"
+      }
+    ]
+  },
+  "horror": {
+    "label": "Horror ambience & tension",
+    "assets": [],
+    "scriptRefs": [
+      {
+        "name": "Hybrid_HorrorAmbience",
+        "parent": "ServerScriptService",
+        "className": "Script",
+        "file": "horror_ambience.lua"
+      },
+      {
+        "name": "Hybrid_HorrorHint",
+        "parent": "StarterPlayerScripts",
+        "className": "LocalScript",
+        "file": "horror_npc_hint.lua"
+      }
+    ]
+  },
+  "racing": {
+    "label": "Racing HUD shell",
+    "assets": [],
+    "scriptRefs": [
+      {
+        "name": "Hybrid_RacingHUD",
+        "parent": "StarterPlayerScripts",
+        "className": "LocalScript",
+        "file": "racing_hud.lua"
+      }
+    ]
+  },
+  "simulator": {
+    "label": "Simulator timing loop",
+    "assets": [],
+    "scriptRefs": [
+      {
+        "name": "Hybrid_SimulatorLoop",
+        "parent": "ServerScriptService",
+        "className": "Script",
+        "file": "simulator_loop.lua"
+      }
+    ]
+  },
+  "tycoon": {
+    "label": "Tycoon touch buttons",
+    "assets": [],
+    "scriptRefs": [
+      {
+        "name": "Hybrid_TycoonTouch",
+        "parent": "ServerScriptService",
+        "className": "Script",
+        "file": "tycoon_touch.lua"
+      }
+    ]
+  }
+}
