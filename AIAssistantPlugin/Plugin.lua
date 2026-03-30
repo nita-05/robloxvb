@@ -1836,6 +1836,10 @@ local function autoImportToolboxEnvironmentAssets(gamePromptText, requestToken)
 		return
 	end
 
+	if type(data) == "table" and data.success == false then
+		appendLog("Auto-toolbox import failed: " .. tostring(data.error or "(unknown error)"))
+		return
+	end
 	appendLog("Auto-toolbox import returned no assets.")
 end
 
