@@ -196,6 +196,175 @@ function structuredTemplateBuildFromPrompt(prompt) {
         properties: { Anchored: true, Size: [6, 1, 6], Position: [0, 5, 0] }
     });
 
+    // Monetization (Shop UI + GamePass/DevProduct hooks).
+    // Note: Robux prices are set on the Roblox website; the game references IDs.
+    // UI is created dynamically in a LocalScript (structured schema can't express UDim2).
+    instances.push(
+        {
+            id: "monetConfig",
+            className: "ModuleScript",
+            name: "MonetizationConfig",
+            parent: "root",
+            properties: {},
+            source:
+                "return {\n" +
+                "  GamePasses = {\n" +
+                "    VIP = 0,\n" +
+                "    DoubleCoins = 0,\n" +
+                "  },\n" +
+                "  DevProducts = {\n" +
+                "    CoinsSmall = { id = 0, coins = 250 },\n" +
+                "    CoinsMedium = { id = 0, coins = 1200 },\n" +
+                "    CoinsLarge = { id = 0, coins = 3500 },\n" +
+                "  }\n" +
+                "}\n"
+        },
+        {
+            id: "monetServer",
+            className: "Script",
+            name: "MonetizationServer",
+            parent: "ServerScriptService",
+            properties: {},
+            source:
+                "local Players = game:GetService(\"Players\")\n" +
+                "local MarketplaceService = game:GetService(\"MarketplaceService\")\n" +
+                "\n" +
+                "local root = workspace:WaitForChild(\"AI_Build\")\n" +
+                "local Config = require(root:WaitForChild(\"MonetizationConfig\"))\n" +
+                "\n" +
+                "local function ensureLeaderstats(plr)\n" +
+                "  local ls = plr:FindFirstChild(\"leaderstats\")\n" +
+                "  if not ls then\n" +
+                "    ls = Instance.new(\"Folder\")\n" +
+                "    ls.Name = \"leaderstats\"\n" +
+                "    ls.Parent = plr\n" +
+                "  end\n" +
+                "  local coins = ls:FindFirstChild(\"Coins\")\n" +
+                "  if not coins then\n" +
+                "    coins = Instance.new(\"IntValue\")\n" +
+                "    coins.Name = \"Coins\"\n" +
+                "    coins.Value = 0\n" +
+                "    coins.Parent = ls\n" +
+                "  end\n" +
+                "  return coins\n" +
+                "end\n" +
+                "\n" +
+                "local function safeOwnsPass(plr, passId)\n" +
+                "  if not passId or passId == 0 then return false end\n" +
+                "  local ok, owns = pcall(function()\n" +
+                "    return MarketplaceService:UserOwnsGamePassAsync(plr.UserId, passId)\n" +
+                "  end)\n" +
+                "  return ok and owns == true\n" +
+                "end\n" +
+                "\n" +
+                "Players.PlayerAdded:Connect(function(plr)\n" +
+                "  local coins = ensureLeaderstats(plr)\n" +
+                "  plr:SetAttribute(\"VIP\", safeOwnsPass(plr, Config.GamePasses and Config.GamePasses.VIP))\n" +
+                "  plr:SetAttribute(\"DoubleCoins\", safeOwnsPass(plr, Config.GamePasses and Config.GamePasses.DoubleCoins))\n" +
+                "  coins.Value = coins.Value\n" +
+                "end)\n" +
+                "\n" +
+                "local function grantCoins(plr, amount)\n" +
+                "  local coins = ensureLeaderstats(plr)\n" +
+                "  local mult = plr:GetAttribute(\"DoubleCoins\") and 2 or 1\n" +
+                "  coins.Value += (amount * mult)\n" +
+                "end\n" +
+                "\n" +
+                "MarketplaceService.ProcessReceipt = function(receiptInfo)\n" +
+                "  local plr = Players:GetPlayerByUserId(receiptInfo.PlayerId)\n" +
+                "  if not plr then\n" +
+                "    return Enum.ProductPurchaseDecision.NotProcessedYet\n" +
+                "  end\n" +
+                "  local products = (Config and Config.DevProducts) or {}\n" +
+                "  for _, def in pairs(products) do\n" +
+                "    if type(def) == \"table\" and def.id == receiptInfo.ProductId then\n" +
+                "      grantCoins(plr, tonumber(def.coins) or 0)\n" +
+                "      return Enum.ProductPurchaseDecision.PurchaseGranted\n" +
+                "    end\n" +
+                "  end\n" +
+                "  return Enum.ProductPurchaseDecision.PurchaseGranted\n" +
+                "end\n"
+        },
+        {
+            id: "monetClient",
+            className: "LocalScript",
+            name: "MonetizationClient",
+            parent: "StarterPlayerScripts",
+            properties: {},
+            source:
+                "local Players = game:GetService(\"Players\")\n" +
+                "local MarketplaceService = game:GetService(\"MarketplaceService\")\n" +
+                "\n" +
+                "local plr = Players.LocalPlayer\n" +
+                "local root = workspace:WaitForChild(\"AI_Build\")\n" +
+                "local cfg = require(root:WaitForChild(\"MonetizationConfig\"))\n" +
+                "\n" +
+                "local function makeGui()\n" +
+                "  local gui = Instance.new(\"ScreenGui\")\n" +
+                "  gui.Name = \"ShopGui\"\n" +
+                "  gui.ResetOnSpawn = false\n" +
+                "  gui.Parent = plr:WaitForChild(\"PlayerGui\")\n" +
+                "\n" +
+                "  local frame = Instance.new(\"Frame\")\n" +
+                "  frame.Size = UDim2.fromOffset(360, 260)\n" +
+                "  frame.Position = UDim2.new(0, 12, 0.5, -130)\n" +
+                "  frame.BackgroundColor3 = Color3.fromRGB(20, 24, 40)\n" +
+                "  frame.BorderSizePixel = 0\n" +
+                "  frame.Parent = gui\n" +
+                "\n" +
+                "  local title = Instance.new(\"TextLabel\")\n" +
+                "  title.BackgroundTransparency = 1\n" +
+                "  title.Size = UDim2.new(1, -12, 0, 32)\n" +
+                "  title.Position = UDim2.new(0, 6, 0, 6)\n" +
+                "  title.Text = \"Shop\"\n" +
+                "  title.TextColor3 = Color3.fromRGB(240, 245, 255)\n" +
+                "  title.Font = Enum.Font.SourceSansBold\n" +
+                "  title.TextSize = 22\n" +
+                "  title.TextXAlignment = Enum.TextXAlignment.Left\n" +
+                "  title.Parent = frame\n" +
+                "\n" +
+                "  local function mkBtn(text, y)\n" +
+                "    local b = Instance.new(\"TextButton\")\n" +
+                "    b.Size = UDim2.new(1, -12, 0, 36)\n" +
+                "    b.Position = UDim2.new(0, 6, 0, y)\n" +
+                "    b.BackgroundColor3 = Color3.fromRGB(45, 55, 85)\n" +
+                "    b.BorderSizePixel = 0\n" +
+                "    b.Text = text\n" +
+                "    b.TextColor3 = Color3.fromRGB(240, 245, 255)\n" +
+                "    b.Font = Enum.Font.SourceSansSemibold\n" +
+                "    b.TextSize = 18\n" +
+                "    b.Parent = frame\n" +
+                "    return b\n" +
+                "  end\n" +
+                "\n" +
+                "  local vip = mkBtn(\"VIP (GamePass)\", 48)\n" +
+                "  local x2 = mkBtn(\"x2 Coins (GamePass)\", 90)\n" +
+                "  local s = mkBtn(\"Buy 250 Coins\", 140)\n" +
+                "  local m = mkBtn(\"Buy 1200 Coins\", 182)\n" +
+                "  local l = mkBtn(\"Buy 3500 Coins\", 224)\n" +
+                "\n" +
+                "  vip.MouseButton1Click:Connect(function()\n" +
+                "    local id = cfg.GamePasses and cfg.GamePasses.VIP or 0\n" +
+                "    if id ~= 0 then MarketplaceService:PromptGamePassPurchase(plr, id) end\n" +
+                "  end)\n" +
+                "  x2.MouseButton1Click:Connect(function()\n" +
+                "    local id = cfg.GamePasses and cfg.GamePasses.DoubleCoins or 0\n" +
+                "    if id ~= 0 then MarketplaceService:PromptGamePassPurchase(plr, id) end\n" +
+                "  end)\n" +
+                "  local function promptProduct(key)\n" +
+                "    local def = cfg.DevProducts and cfg.DevProducts[key]\n" +
+                "    local id = def and def.id or 0\n" +
+                "    if id ~= 0 then MarketplaceService:PromptProductPurchase(plr, id) end\n" +
+                "  end\n" +
+                "  s.MouseButton1Click:Connect(function() promptProduct(\"CoinsSmall\") end)\n" +
+                "  m.MouseButton1Click:Connect(function() promptProduct(\"CoinsMedium\") end)\n" +
+                "  l.MouseButton1Click:Connect(function() promptProduct(\"CoinsLarge\") end)\n" +
+                "end\n" +
+                "\n" +
+                "task.defer(makeGui)\n"
+        }
+    );
+
     if (isSurvival) {
         // Keep your 2-script structure: one ServerScript + one Client UI script.
         // The server script creates environment + enemies + replicated events.
