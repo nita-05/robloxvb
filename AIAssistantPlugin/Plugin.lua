@@ -859,6 +859,11 @@ local function appendLog(line)
 	refreshLogScroll()
 end
 
+-- Keep Toolbox logs clean by default. Set true only when debugging asset IDs.
+local TOOLBOX_VERBOSE_LOGS = false
+-- When true, suppress ALL toolbox-related log lines (success + errors).
+local TOOLBOX_SILENT = true
+
 local function setButtonsEnabled(enabled)
 	local function setVisual(btn, isActive)
 		btn.Active = isActive
@@ -1072,6 +1077,8 @@ local function insertAssetsFromServerList(assetList)
 	end
 	local folder = ensureToolboxFolder()
 	local placed = 0
+	local skipped = 0
+	local failed = 0
 	for _, aid in ipairs(assetList) do
 		local id = nil
 		if type(aid) == "number" and aid > 0 then
@@ -1082,7 +1089,10 @@ local function insertAssetsFromServerList(assetList)
 		if id then
 			local okCheck, reason = getInsertabilityInfo(id)
 			if not okCheck then
-				appendLog(("Skipped asset %s: %s"):format(tostring(id), tostring(reason)))
+				skipped += 1
+				if not TOOLBOX_SILENT and TOOLBOX_VERBOSE_LOGS then
+					appendLog(("Toolbox: skipped asset %s: %s"):format(tostring(id), tostring(reason)))
+				end
 				continue
 			end
 
@@ -1098,14 +1108,23 @@ local function insertAssetsFromServerList(assetList)
 					placed += 1
 					layoutInsertedModel(child, placed)
 				else
-					appendLog(("Empty package for asset %s"):format(tostring(id)))
+					failed += 1
+					if not TOOLBOX_SILENT and TOOLBOX_VERBOSE_LOGS then
+						appendLog(("Toolbox: empty package for asset %s"):format(tostring(id)))
+					end
 				end
 				pack:Destroy()
 			else
-				appendLog(("LoadAsset failed for %s: %s"):format(tostring(id), tostring(pack)))
+				failed += 1
+				if not TOOLBOX_SILENT and TOOLBOX_VERBOSE_LOGS then
+					appendLog(("Toolbox: LoadAsset failed for %s: %s"):format(tostring(id), tostring(pack)))
+				end
 			end
 			task.wait(0.15)
 		end
+	end
+	if not TOOLBOX_SILENT and (skipped > 0 or failed > 0) then
+		appendLog(("Toolbox: placed %d | skipped %d | failed %d"):format(placed, skipped, failed))
 	end
 	return placed, nil
 end
@@ -1187,6 +1206,8 @@ local function insertMergedAssetsIntoGenerated(assetList)
 		return 0
 	end
 	local placed = 0
+	local skipped = 0
+	local failed = 0
 	for _, aid in ipairs(assetList) do
 		local id = nil
 		if type(aid) == "number" and aid > 0 then
@@ -1197,7 +1218,10 @@ local function insertMergedAssetsIntoGenerated(assetList)
 		if id then
 			local okCheck, reason = getInsertabilityInfo(id)
 			if not okCheck then
-				appendLog(("Hybrid: skipped asset %s: %s"):format(tostring(id), tostring(reason)))
+				skipped += 1
+				if not TOOLBOX_SILENT and TOOLBOX_VERBOSE_LOGS then
+					appendLog(("Hybrid: skipped asset %s: %s"):format(tostring(id), tostring(reason)))
+				end
 				continue
 			end
 
@@ -1213,14 +1237,23 @@ local function insertMergedAssetsIntoGenerated(assetList)
 					placed += 1
 					layoutInsertedModel(child, placed)
 				else
-					appendLog(("Hybrid: empty package for %s"):format(tostring(id)))
+					failed += 1
+					if not TOOLBOX_SILENT and TOOLBOX_VERBOSE_LOGS then
+						appendLog(("Hybrid: empty package for %s"):format(tostring(id)))
+					end
 				end
 				pack:Destroy()
 			else
-				appendLog(("Hybrid: LoadAsset failed for %s: %s"):format(tostring(id), tostring(pack)))
+				failed += 1
+				if not TOOLBOX_SILENT and TOOLBOX_VERBOSE_LOGS then
+					appendLog(("Hybrid: LoadAsset failed for %s: %s"):format(tostring(id), tostring(pack)))
+				end
 			end
 			task.wait(0.15)
 		end
+	end
+	if not TOOLBOX_SILENT and (skipped > 0 or failed > 0) then
+		appendLog(("Hybrid assets: placed %d | skipped %d | failed %d"):format(placed, skipped, failed))
 	end
 	return placed
 end
@@ -1233,6 +1266,8 @@ local function insertAssetsIntoAiBuild(assetList)
 	local folders = ensureAiFolders()
 	local assetsFolder = getOrCreateFolder(folders.workspace, "Assets")
 	local placed = 0
+	local skipped = 0
+	local failed = 0
 	for _, aid in ipairs(assetList) do
 		local id = nil
 		if type(aid) == "number" and aid > 0 then
@@ -1243,7 +1278,10 @@ local function insertAssetsIntoAiBuild(assetList)
 		if id then
 			local okCheck, reason = getInsertabilityInfo(id)
 			if not okCheck then
-				appendLog(("Toolbox: skipped asset %s: %s"):format(tostring(id), tostring(reason)))
+				skipped += 1
+				if not TOOLBOX_SILENT and TOOLBOX_VERBOSE_LOGS then
+					appendLog(("Toolbox: skipped asset %s: %s"):format(tostring(id), tostring(reason)))
+				end
 				continue
 			end
 
@@ -1259,14 +1297,23 @@ local function insertAssetsIntoAiBuild(assetList)
 					placed += 1
 					layoutInsertedModel(child, placed)
 				else
-					appendLog(("Toolbox: empty package for %s"):format(tostring(id)))
+					failed += 1
+					if not TOOLBOX_SILENT and TOOLBOX_VERBOSE_LOGS then
+						appendLog(("Toolbox: empty package for %s"):format(tostring(id)))
+					end
 				end
 				pack:Destroy()
 			else
-				appendLog(("Toolbox: LoadAsset failed for %s: %s"):format(tostring(id), tostring(pack)))
+				failed += 1
+				if not TOOLBOX_SILENT and TOOLBOX_VERBOSE_LOGS then
+					appendLog(("Toolbox: LoadAsset failed for %s: %s"):format(tostring(id), tostring(pack)))
+				end
 			end
 			task.wait(0.15)
 		end
+	end
+	if not TOOLBOX_SILENT and (skipped > 0 or failed > 0) then
+		appendLog(("Toolbox: placed %d | skipped %d | failed %d"):format(placed, skipped, failed))
 	end
 	return placed
 end
@@ -1876,21 +1923,21 @@ local function autoImportToolboxEnvironmentAssets(gamePromptText, requestToken)
 	end
 
 	if err then
-		appendLog("Auto-toolbox import failed: " .. err)
+		-- Silent by default (toolbox failures are common due to permissions).
 		return
 	end
 
 	if type(data) == "table" and data.success ~= false and type(data.assets) == "table" then
 		local placed = insertAssetsIntoAiBuild(data.assets)
-		appendLog(("Auto-toolbox: placed %d environment asset(s) into AI_Build/Assets."):format(placed))
+		-- Silent by default; assets appear in AI_Build/Assets if any were insertable.
 		return
 	end
 
 	if type(data) == "table" and data.success == false then
-		appendLog("Auto-toolbox import failed: " .. tostring(data.error or "(unknown error)"))
+		-- Silent by default.
 		return
 	end
-	appendLog("Auto-toolbox import returned no assets.")
+	-- Silent by default.
 end
 
 generateBtn.MouseButton1Click:Connect(function()
