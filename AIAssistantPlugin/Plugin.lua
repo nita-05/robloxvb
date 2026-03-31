@@ -539,8 +539,79 @@ end)
 
 promptBox.Parent = promptPanel
 
+-- API key (saved locally; backend URL is fixed)
+local apiKeyPanel = addPanel(rootScroll, 0)
+apiKeyPanel.LayoutOrder = 2
+apiKeyPanel.AutomaticSize = Enum.AutomaticSize.Y
+
+local apiKeyLayout = Instance.new("UIListLayout")
+apiKeyLayout.FillDirection = Enum.FillDirection.Vertical
+apiKeyLayout.SortOrder = Enum.SortOrder.LayoutOrder
+apiKeyLayout.Padding = UDim.new(0, 6)
+apiKeyLayout.Parent = apiKeyPanel
+
+addSectionLabel(apiKeyPanel, "API Key").LayoutOrder = 1
+
+local function safeGetSetting(key, defaultValue)
+	local ok, v = pcall(function()
+		return plugin:GetSetting(key)
+	end)
+	if ok and v ~= nil then
+		return v
+	end
+	return defaultValue
+end
+
+local function safeSetSetting(key, value)
+	pcall(function()
+		plugin:SetSetting(key, value)
+	end)
+end
+
+local apiKeyBox = Instance.new("TextBox")
+apiKeyBox.PlaceholderText = "Backend API Key (X-API-Key)"
+apiKeyBox.Text = tostring(safeGetSetting("AIAssistant.ApiKey", ""))
+apiKeyBox.Size = UDim2.new(1, 0, 0, 34)
+apiKeyBox.BackgroundColor3 = THEME.Surface
+apiKeyBox.TextColor3 = THEME.Text
+apiKeyBox.ClearTextOnFocus = false
+apiKeyBox.TextWrapped = false
+apiKeyBox.TextXAlignment = Enum.TextXAlignment.Left
+apiKeyBox.Font = Enum.Font.SourceSans
+apiKeyBox.TextSize = 14
+apiKeyBox.LayoutOrder = 2
+
+local apiKeyPad = Instance.new("UIPadding")
+apiKeyPad.PaddingLeft = UDim.new(0, 8)
+apiKeyPad.PaddingRight = UDim.new(0, 8)
+apiKeyPad.Parent = apiKeyBox
+
+local apiKeyStroke = Instance.new("UIStroke")
+apiKeyStroke.Color = THEME.Border
+apiKeyStroke.Thickness = 1
+apiKeyStroke.Transparency = 0.35
+apiKeyStroke.Parent = apiKeyBox
+
+local apiKeyCorner = Instance.new("UICorner")
+apiKeyCorner.CornerRadius = UDim.new(0, 8)
+apiKeyCorner.Parent = apiKeyBox
+
+apiKeyBox.Parent = apiKeyPanel
+
+local saveApiKeyBtn = Instance.new("TextButton")
+saveApiKeyBtn.Text = "Save API Key"
+saveApiKeyBtn.Size = UDim2.new(1, 0, 0, 34)
+saveApiKeyBtn.LayoutOrder = 3
+styleButton(saveApiKeyBtn, Color3.fromRGB(33, 40, 64))
+saveApiKeyBtn.Parent = apiKeyPanel
+
+saveApiKeyBtn.MouseButton1Click:Connect(function()
+	safeSetSetting("AIAssistant.ApiKey", tostring(apiKeyBox.Text or ""))
+	setLog("API key saved.")
+end)
+
 local actionsPanel = addPanel(rootScroll, 0)
-actionsPanel.LayoutOrder = 2
+actionsPanel.LayoutOrder = 3
 actionsPanel.AutomaticSize = Enum.AutomaticSize.Y
 
 local actionsLayout = Instance.new("UIListLayout")
