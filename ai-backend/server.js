@@ -1436,6 +1436,17 @@ app.post("/ai", async (req, res) => {
 app.post("/plan", async (req, res) => {
     const prompt = req.body.prompt;
     const fast = req.body.fast !== false;
+    const modelTier = String(req.body.modelTier || "").toLowerCase();
+    const tier = modelTier == "fast" || modelTier == "balanced" || modelTier == "smart"
+        ? modelTier
+        : fast
+            ? "fast"
+            : "balanced";
+
+    const plannerModel =
+        tier == "fast" ? models.FAST_PLANNER :
+            tier == "balanced" ? models.BALANCED_PLANNER :
+                models.SMART_PLANNER;
 
     // Speed-first mode: return immediate local plan.
     if (fast) {
@@ -1443,7 +1454,7 @@ app.post("/plan", async (req, res) => {
     }
 
     const completion = await openai.chat.completions.create({
-        model: models.PLANNER,
+        model: plannerModel,
         messages: [
             {
                 role: "system",
@@ -1512,6 +1523,24 @@ app.post("/ai-final", async (req, res) => {
     const preferTemplate = req.body.preferTemplate !== false;
     const attempts = Number(req.body.attempts || 2);
 
+    const modelTier = String(req.body.modelTier || "").toLowerCase();
+    const tier =
+        modelTier == "fast" || modelTier == "balanced" || modelTier == "smart"
+            ? modelTier
+            : fast
+                ? "fast"
+                : "balanced";
+
+    const chatModel =
+        tier == "fast" ? models.FAST_CHAT :
+            tier == "balanced" ? models.BALANCED_CHAT :
+                models.SMART_CHAT;
+
+    const plannerModel =
+        tier == "fast" ? models.FAST_PLANNER :
+            tier == "balanced" ? models.BALANCED_PLANNER :
+                models.SMART_PLANNER;
+
     const types = detectGameTypes(prompt);
 
     let finalCode = "";
@@ -1559,7 +1588,7 @@ app.post("/ai-final", async (req, res) => {
 
         const aiRes = await withRetries(
             () => openai.chat.completions.create({
-                model: models.CHAT,
+                model: chatModel,
                 messages: [
                     {
                         role: "system",
@@ -1623,7 +1652,7 @@ app.post("/ai-final", async (req, res) => {
         const mergedTemplate = getMergedTemplate(types);
 
         const aiRes = await openai.chat.completions.create({
-            model: models.CHAT,
+            model: chatModel,
             messages: [
                 {
                     role: "system",
@@ -1661,7 +1690,7 @@ app.post("/ai-final", async (req, res) => {
             plan = quickPlanFromPrompt(prompt);
 
             const codeRes = await openai.chat.completions.create({
-                model: models.CHAT,
+                model: chatModel,
                 messages: [
                     {
                         role: "system",
@@ -1692,7 +1721,7 @@ app.post("/ai-final", async (req, res) => {
 
         // 🧠 STEP 1: PLAN
         const planRes = await openai.chat.completions.create({
-            model: models.PLANNER,
+            model: plannerModel,
             messages: [
                 {
                     role: "system",
@@ -1709,7 +1738,7 @@ app.post("/ai-final", async (req, res) => {
 
         // 💻 STEP 2: GENERATE CODE FROM PLAN
         const codeRes = await openai.chat.completions.create({
-            model: models.CHAT,
+            model: chatModel,
             messages: [
                 {
                     role: "system",

@@ -437,7 +437,7 @@ title.ZIndex = 11
 title.Parent = titleStack
 
 local subtitle = Instance.new("TextLabel")
-subtitle.Text = "ROBLOX AI BUILDER"
+subtitle.Text = "Roblox AI Builder"
 subtitle.Size = UDim2.new(1, 0, 0, 16)
 subtitle.BackgroundTransparency = 1
 subtitle.TextColor3 = THEME.Text
@@ -456,19 +456,51 @@ headerFill.Size = UDim2.new(1, 0, 1, 0)
 headerFill.LayoutOrder = 3
 headerFill.Parent = headerContent
 
-local statusPill = Instance.new("TextLabel")
+-- Top-right controls: model switching, live mode, memory, credits
+local headerRight = Instance.new("Frame")
+headerRight.Name = "HeaderRight"
+headerRight.BackgroundTransparency = 1
+headerRight.Size = UDim2.new(0, 280, 1, 0)
+headerRight.LayoutOrder = 4
+headerRight.Parent = headerContent
+
+local headerRightLayout = Instance.new("UIListLayout")
+headerRightLayout.FillDirection = Enum.FillDirection.Horizontal
+headerRightLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+headerRightLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+headerRightLayout.SortOrder = Enum.SortOrder.LayoutOrder
+headerRightLayout.Padding = UDim.new(0, 8)
+headerRightLayout.Parent = headerRight
+
+local creditsValLabel = Instance.new("TextLabel")
+creditsValLabel.Name = "CreditsLabel"
+creditsValLabel.BackgroundTransparency = 1
+creditsValLabel.Size = UDim2.new(0, 95, 0, 22)
+creditsValLabel.TextXAlignment = Enum.TextXAlignment.Left
+creditsValLabel.Text = "Credits: " .. tostring(credits)
+creditsValLabel.TextColor3 = THEME.Muted
+creditsValLabel.TextTransparency = 0.15
+creditsValLabel.Font = Enum.Font.SourceSansSemibold
+creditsValLabel.TextSize = 12
+creditsValLabel.ZIndex = 12
+creditsValLabel.LayoutOrder = 1
+creditsValLabel.Parent = headerRight
+creditsLabel = creditsValLabel
+
+local statusPill
+
+statusPill = Instance.new("TextLabel")
 statusPill.Name = "StatusPill"
 statusPill.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
 statusPill.BorderSizePixel = 0
 statusPill.Size = UDim2.new(0, 86, 0, 22)
-statusPill.Position = UDim2.new(0, 0, 0, 0)
+statusPill.Position = UDim2.new(1, -92, 0, 0)
 statusPill.Text = "READY"
 statusPill.TextColor3 = THEME.Text
 statusPill.TextTransparency = 0.15
 statusPill.Font = Enum.Font.SourceSansSemibold
 statusPill.TextSize = 12
 statusPill.ZIndex = 12
-statusPill.LayoutOrder = 4
 statusPill.Parent = headerContent
 statusPill.Visible = false
 
@@ -482,6 +514,422 @@ statusStroke.Thickness = 1
 statusStroke.Transparency = 0.4
 statusStroke.Parent = statusPill
 
+-- Small pill toggle button helper
+local function stylePillToggle(btn, offColor)
+	btn.AutoButtonColor = false
+	btn.BackgroundColor3 = offColor
+	btn.TextColor3 = THEME.Text
+	btn.Font = Enum.Font.SourceSansSemibold
+	btn.TextSize = 12
+	btn.TextTransparency = 0.05
+	btn.BorderSizePixel = 0
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 999)
+	corner.Parent = btn
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = THEME.Border
+	stroke.Thickness = 1
+	stroke.Transparency = 0.35
+	stroke.Parent = btn
+end
+
+local function setToggleActive(btn, on, onColor)
+	if on then
+		btn.BackgroundColor3 = onColor
+		btn.TextTransparency = 0.02
+	else
+		btn.BackgroundColor3 = btn:GetAttribute("OffColor") or Color3.fromRGB(38, 38, 38)
+		btn.TextTransparency = 0.05
+	end
+end
+
+local function makeDropdownOption(parent, text)
+	local b = Instance.new("TextButton")
+	b.Text = text
+	b.BackgroundColor3 = THEME.Panel
+	b.BorderSizePixel = 0
+	b.Size = UDim2.new(1, 0, 0, 26)
+	b.TextColor3 = THEME.Text
+	b.Font = Enum.Font.SourceSansSemibold
+	b.TextSize = 13
+	b.AutoButtonColor = true
+	b.Parent = parent
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, 8)
+	c.Parent = b
+	local s = Instance.new("UIStroke")
+	s.Color = THEME.Border
+	s.Thickness = 1
+	s.Transparency = 0.45
+	s.Parent = b
+	return b
+end
+
+local function makeModelDropdown()
+	local main = Instance.new("TextButton")
+	main.Name = "ModelDropdownBtn"
+	main.Text = "Model: Auto"
+	main.Size = UDim2.new(0, 115, 0, 26)
+	main.LayoutOrder = 2
+	main.AutoButtonColor = false
+	main.BackgroundColor3 = THEME.Panel
+	main.BorderSizePixel = 0
+	main.TextColor3 = THEME.Text
+	main.Font = Enum.Font.SourceSansSemibold
+	main.TextSize = 12
+	main.ZIndex = 50
+	main.Parent = headerRight
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = THEME.ButtonRadius
+	corner.Parent = main
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = THEME.Border
+	stroke.Thickness = 1
+	stroke.Transparency = 0.35
+	stroke.Parent = main
+
+	local popup = Instance.new("Frame")
+	popup.Name = "ModelDropdownPopup"
+	popup.BackgroundColor3 = THEME.Surface
+	popup.BorderSizePixel = 0
+	popup.Visible = false
+	popup.Size = UDim2.new(0, 165, 0, 128)
+	popup.ZIndex = 60
+	popup.Position = UDim2.new(0, 0, 1, 6)
+	popup.Parent = main
+	local popupCorner = Instance.new("UICorner")
+	popupCorner.CornerRadius = UDim.new(0, 10)
+	popupCorner.Parent = popup
+	local popupStroke = Instance.new("UIStroke")
+	popupStroke.Color = THEME.Border
+	popupStroke.Thickness = 1
+	popupStroke.Transparency = 0.35
+	popupStroke.Parent = popup
+
+	local popupLayout = Instance.new("UIListLayout")
+	popupLayout.FillDirection = Enum.FillDirection.Vertical
+	popupLayout.Padding = UDim.new(0, 6)
+	popupLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	popupLayout.Parent = popup
+
+	local open = false
+	local function close()
+		open = false
+		popup.Visible = false
+	end
+	local function setTier(tier)
+		selectedModelTier = tier
+		main.Text = "Model: " .. (tier:gsub("^%l", string.upper))
+		close()
+	end
+
+	local optAuto = makeDropdownOption(popup, "Auto")
+	optAuto.LayoutOrder = 1
+	optAuto.MouseButton1Click:Connect(function()
+		setTier("auto")
+	end)
+
+	local optFast = makeDropdownOption(popup, "Fast")
+	optFast.LayoutOrder = 2
+	optFast.MouseButton1Click:Connect(function()
+		setTier("fast")
+	end)
+
+	local optBalanced = makeDropdownOption(popup, "Balanced")
+	optBalanced.LayoutOrder = 3
+	optBalanced.MouseButton1Click:Connect(function()
+		setTier("balanced")
+	end)
+
+	local optSmart = makeDropdownOption(popup, "Smart")
+	optSmart.LayoutOrder = 4
+	optSmart.MouseButton1Click:Connect(function()
+		setTier("smart")
+	end)
+
+	main.MouseButton1Click:Connect(function()
+		open = not open
+		popup.Visible = open
+	end)
+
+	return main
+end
+
+local modelDropdownBtn = makeModelDropdown()
+
+-- Live mode toggle
+local liveToggleBtn = Instance.new("TextButton")
+liveToggleBtn.Name = "LiveToggleBtn"
+liveToggleBtn.Text = "⚡ Live Mode"
+liveToggleBtn.Size = UDim2.new(0, 115, 0, 26)
+liveToggleBtn.LayoutOrder = 3
+liveToggleBtn.ZIndex = 12
+liveToggleBtn:SetAttribute("OffColor", Color3.fromRGB(38, 38, 38))
+stylePillToggle(liveToggleBtn, liveToggleBtn:GetAttribute("OffColor"))
+liveToggleBtn.Parent = headerRight
+
+-- Memory toggle
+local memoryToggleBtn = Instance.new("TextButton")
+memoryToggleBtn.Name = "MemoryToggleBtn"
+memoryToggleBtn.Text = "🧠 Memory"
+memoryToggleBtn.Size = UDim2.new(0, 102, 0, 26)
+memoryToggleBtn.LayoutOrder = 4
+memoryToggleBtn.ZIndex = 12
+memoryToggleBtn:SetAttribute("OffColor", Color3.fromRGB(38, 38, 38))
+stylePillToggle(memoryToggleBtn, memoryToggleBtn:GetAttribute("OffColor"))
+memoryToggleBtn.Parent = headerRight
+
+local function syncToggles()
+	setToggleActive(liveToggleBtn, liveModeEnabled, THEME.Primary)
+	setToggleActive(memoryToggleBtn, memoryEnabled, THEME.Primary2)
+end
+syncToggles()
+
+liveToggleBtn.MouseButton1Click:Connect(function()
+	liveModeEnabled = not liveModeEnabled
+	syncToggles()
+	setLog(liveModeEnabled and "Live Mode enabled." or "Live Mode disabled.")
+end)
+
+memoryToggleBtn.MouseButton1Click:Connect(function()
+	memoryEnabled = not memoryEnabled
+	syncToggles()
+	setLog(memoryEnabled and "Memory enabled (UI-level)." or "Memory disabled.")
+end)
+
+-- Optional Right Sidebar (collapsible)
+do
+	local sidebarW = 180
+	local sidebarHPadTop = 64
+	local sidebarY = sidebarHPadTop
+	local sidebarX = -sidebarW - 8
+
+	local sidebarExpanded = false
+	local sidebarFrame = Instance.new("Frame")
+	sidebarFrame.Name = "RightSidebar"
+	sidebarFrame.BackgroundColor3 = THEME.Panel
+	sidebarFrame.BorderSizePixel = 0
+	sidebarFrame.ClipsDescendants = true
+	sidebarFrame.Size = UDim2.new(0, sidebarW, 1, -(sidebarY + 16))
+	sidebarFrame.Position = UDim2.new(1, sidebarX, 0, sidebarY)
+	sidebarFrame.Visible = false
+	sidebarFrame.ZIndex = 30
+	sidebarFrame.Parent = frame
+
+	local sidebarCorner = Instance.new("UICorner")
+	sidebarCorner.CornerRadius = THEME.Radius
+	sidebarCorner.Parent = sidebarFrame
+
+	local sidebarStroke = Instance.new("UIStroke")
+	sidebarStroke.Color = THEME.Border
+	sidebarStroke.Thickness = 1
+	sidebarStroke.Transparency = 0.35
+	sidebarStroke.Parent = sidebarFrame
+
+	local sidebarHeader = Instance.new("Frame")
+	sidebarHeader.Name = "SidebarHeader"
+	sidebarHeader.BackgroundTransparency = 1
+	sidebarHeader.Size = UDim2.new(1, 0, 0, 30)
+	sidebarHeader.Parent = sidebarFrame
+
+	local headerLayout = Instance.new("UIListLayout")
+	headerLayout.FillDirection = Enum.FillDirection.Horizontal
+	headerLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	headerLayout.Padding = UDim.new(0, 6)
+	headerLayout.HorizontalAlignment = Enum.HorizontalAlignment.Fill
+	headerLayout.Parent = sidebarHeader
+
+	local scriptsTabBtn = Instance.new("TextButton")
+	scriptsTabBtn.Text = "Scripts"
+	scriptsTabBtn.AutoButtonColor = true
+	scriptsTabBtn.Size = UDim2.new(0, 0, 0, 26)
+	scriptsTabBtn.LayoutOrder = 1
+	styleButton(scriptsTabBtn, THEME.Surface)
+	scriptsTabBtn.Parent = sidebarHeader
+
+	local memoryTabBtn = Instance.new("TextButton")
+	memoryTabBtn.Text = "Memory"
+	memoryTabBtn.AutoButtonColor = true
+	memoryTabBtn.Size = UDim2.new(0, 0, 0, 26)
+	memoryTabBtn.LayoutOrder = 2
+	styleButton(memoryTabBtn, THEME.Surface)
+	memoryTabBtn.Parent = sidebarHeader
+
+	local historyTabBtn = Instance.new("TextButton")
+	historyTabBtn.Text = "History"
+	historyTabBtn.AutoButtonColor = true
+	historyTabBtn.Size = UDim2.new(0, 0, 0, 26)
+	historyTabBtn.LayoutOrder = 3
+	styleButton(historyTabBtn, THEME.Surface)
+	historyTabBtn.Parent = sidebarHeader
+
+	local sidebarBody = Instance.new("Frame")
+	sidebarBody.Name = "SidebarBody"
+	sidebarBody.BackgroundTransparency = 1
+	sidebarBody.Size = UDim2.new(1, 0, 1, -30)
+	sidebarBody.Position = UDim2.new(0, 0, 0, 30)
+	sidebarBody.Parent = sidebarFrame
+
+	local scriptsTab = Instance.new("Frame")
+	scriptsTab.Name = "ScriptsTab"
+	scriptsTab.BackgroundTransparency = 1
+	scriptsTab.Size = UDim2.new(1, 0, 1, 0)
+	scriptsTab.Visible = true
+	scriptsTab.Parent = sidebarBody
+
+	local memoryTab = Instance.new("Frame")
+	memoryTab.Name = "MemoryTab"
+	memoryTab.BackgroundTransparency = 1
+	memoryTab.Size = UDim2.new(1, 0, 1, 0)
+	memoryTab.Visible = false
+	memoryTab.Parent = sidebarBody
+
+	local historyTab = Instance.new("Frame")
+	historyTab.Name = "HistoryTab"
+	historyTab.BackgroundTransparency = 1
+	historyTab.Size = UDim2.new(1, 0, 1, 0)
+	historyTab.Visible = false
+	historyTab.Parent = sidebarBody
+
+	local scriptsText = Instance.new("TextLabel")
+	scriptsText.BackgroundTransparency = 1
+	scriptsText.Size = UDim2.new(1, -10, 1, -10)
+	scriptsText.Position = UDim2.new(0, 5, 0, 5)
+	scriptsText.TextXAlignment = Enum.TextXAlignment.Left
+	scriptsText.TextYAlignment = Enum.TextYAlignment.Top
+	scriptsText.TextWrapped = true
+	scriptsText.Font = Enum.Font.Code
+	scriptsText.TextSize = 12
+	scriptsText.TextColor3 = THEME.Text
+	scriptsText.Text = "No scripts yet."
+	scriptsText.Parent = scriptsTab
+
+	local memoryText = Instance.new("TextLabel")
+	memoryText.BackgroundTransparency = 1
+	memoryText.Size = UDim2.new(1, -10, 1, -10)
+	memoryText.Position = UDim2.new(0, 5, 0, 5)
+	memoryText.TextXAlignment = Enum.TextXAlignment.Left
+	memoryText.TextYAlignment = Enum.TextYAlignment.Top
+	memoryText.TextWrapped = true
+	memoryText.Font = Enum.Font.Code
+	memoryText.TextSize = 12
+	memoryText.TextColor3 = THEME.Text
+	memoryText.Text = "Memory is OFF."
+	memoryText.Parent = memoryTab
+
+	local historyText = Instance.new("TextLabel")
+	historyText.BackgroundTransparency = 1
+	historyText.Size = UDim2.new(1, -10, 1, -10)
+	historyText.Position = UDim2.new(0, 5, 0, 5)
+	historyText.TextXAlignment = Enum.TextXAlignment.Left
+	historyText.TextYAlignment = Enum.TextYAlignment.Top
+	historyText.TextWrapped = true
+	historyText.Font = Enum.Font.Code
+	historyText.TextSize = 12
+	historyText.TextColor3 = THEME.Text
+	historyText.Text = "No history yet."
+	historyText.Parent = historyTab
+
+	local function refreshSidebar()
+		-- Scripts
+		local names = {}
+		if type(lastStructuredBuild) == "table" and type(lastStructuredBuild.instances) == "table" then
+			for _, inst in ipairs(lastStructuredBuild.instances) do
+				if type(inst) == "table" then
+					local cn = inst.className
+					if cn == "Script" or cn == "LocalScript" or cn == "ModuleScript" then
+						local n = inst.name or inst.id or cn
+						if n and n ~= "" then
+							table.insert(names, tostring(n))
+						end
+					end
+				end
+			end
+		end
+		if #names > 0 then
+			scriptsText.Text = table.concat(names, ", ")
+		else
+			scriptsText.Text = "No scripts yet."
+		end
+
+		-- Memory
+		if memoryEnabled then
+			if #memoryEntries > 0 then
+				local lines = {}
+				for i, e in ipairs(memoryEntries) do
+					if e and e.prompt then
+						local sn = e.scripts and #e.scripts > 0 and table.concat(e.scripts, ", ") or "none"
+						table.insert(lines, ("#%d: %s\nscripts: %s"):format(i, tostring(e.prompt), sn))
+					end
+				end
+				memoryText.Text = table.concat(lines, "\n\n")
+			else
+				memoryText.Text = "Memory enabled, but empty."
+			end
+		else
+			memoryText.Text = "Memory is OFF."
+		end
+
+		-- History
+		historyText.Text = ("Undo: %d\nRedo: %d\nLive: %s"):format(#undoStack, #redoStack, tostring(liveModeEnabled))
+	end
+
+	local function showTab(which)
+		scriptsTab.Visible = which == "scripts"
+		memoryTab.Visible = which == "memory"
+		historyTab.Visible = which == "history"
+		refreshSidebar()
+	end
+
+	scriptsTabBtn.MouseButton1Click:Connect(function()
+		showTab("scripts")
+	end)
+	memoryTabBtn.MouseButton1Click:Connect(function()
+		showTab("memory")
+	end)
+	historyTabBtn.MouseButton1Click:Connect(function()
+		showTab("history")
+	end)
+
+	-- Collapse/expand handle
+	local handleBtn = Instance.new("TextButton")
+	handleBtn.Name = "SidebarHandle"
+	handleBtn.Text = ">>"
+	handleBtn.BackgroundColor3 = THEME.Panel
+	handleBtn.BorderSizePixel = 0
+	handleBtn.TextColor3 = THEME.Text
+	handleBtn.Font = Enum.Font.SourceSansSemibold
+	handleBtn.TextSize = 14
+	handleBtn.AutoButtonColor = false
+	handleBtn.Size = UDim2.new(0, 24, 0, 70)
+	handleBtn.Position = UDim2.new(1, -28, 0, sidebarY + 100)
+	handleBtn.ZIndex = 40
+	handleBtn.Parent = frame
+
+	local handleCorner = Instance.new("UICorner")
+	handleCorner.CornerRadius = UDim.new(0, 12)
+	handleCorner.Parent = handleBtn
+
+	local handleStroke = Instance.new("UIStroke")
+	handleStroke.Color = THEME.Border
+	handleStroke.Thickness = 1
+	handleStroke.Transparency = 0.35
+	handleStroke.Parent = handleBtn
+
+	handleBtn.MouseButton1Click:Connect(function()
+		sidebarExpanded = not sidebarExpanded
+		sidebarFrame.Visible = sidebarExpanded
+		handleBtn.Text = sidebarExpanded and "<<" or ">>"
+		if sidebarExpanded then
+			refreshSidebar()
+		end
+	end)
+end
+
 local promptPanel = addPanel(rootScroll, 0)
 promptPanel.LayoutOrder = 1
 promptPanel.AutomaticSize = Enum.AutomaticSize.Y
@@ -494,10 +942,114 @@ promptLayout.Parent = promptPanel
 
 addSectionLabel(promptPanel, "Prompt").LayoutOrder = 1
 
+-- Template dropdown (above prompt)
+do
+	local templateRow = Instance.new("Frame")
+	templateRow.BackgroundTransparency = 1
+	templateRow.Size = UDim2.new(1, 0, 0, 32)
+	templateRow.LayoutOrder = 2
+	templateRow.Parent = promptPanel
+
+	local templateLbl = Instance.new("TextLabel")
+	templateLbl.BackgroundTransparency = 1
+	templateLbl.Size = UDim2.new(0, 70, 1, 0)
+	templateLbl.Position = UDim2.new(0, 0, 0, 0)
+	templateLbl.Text = "Template"
+	templateLbl.TextColor3 = THEME.Text
+	templateLbl.TextTransparency = 0.2
+	templateLbl.Font = Enum.Font.SourceSansSemibold
+	templateLbl.TextSize = 12
+	templateLbl.TextXAlignment = Enum.TextXAlignment.Left
+	templateLbl.Parent = templateRow
+
+	local templateMain = Instance.new("TextButton")
+	templateMain.Name = "TemplateDropdownBtn"
+	templateMain.Text = "Template: None"
+	templateMain.BackgroundColor3 = THEME.Surface
+	templateMain.BorderSizePixel = 0
+	templateMain.TextColor3 = THEME.Text
+	templateMain.Font = Enum.Font.SourceSansSemibold
+	templateMain.TextSize = 12
+	templateMain.Size = UDim2.new(1, -78, 0, 26)
+	templateMain.Position = UDim2.new(0, 78, 0, 3)
+	templateMain.AutoButtonColor = false
+	templateMain.ZIndex = 50
+	templateMain.Parent = templateRow
+
+	local templateCorner = Instance.new("UICorner")
+	templateCorner.CornerRadius = THEME.ButtonRadius
+	templateCorner.Parent = templateMain
+
+	local templateStroke = Instance.new("UIStroke")
+	templateStroke.Color = THEME.Border
+	templateStroke.Thickness = 1
+	templateStroke.Transparency = 0.35
+	templateStroke.Parent = templateMain
+
+	local templatePopup = Instance.new("Frame")
+	templatePopup.Name = "TemplateDropdownPopup"
+	templatePopup.BackgroundColor3 = THEME.Surface
+	templatePopup.BorderSizePixel = 0
+	templatePopup.Visible = false
+	templatePopup.Size = UDim2.new(0, 190, 0, 132)
+	templatePopup.ZIndex = 60
+	templatePopup.Position = UDim2.new(0, 0, 1, 6)
+	templatePopup.Parent = templateMain
+
+	local templatePopupCorner = Instance.new("UICorner")
+	templatePopupCorner.CornerRadius = UDim.new(0, 10)
+	templatePopupCorner.Parent = templatePopup
+
+	local templatePopupStroke = Instance.new("UIStroke")
+	templatePopupStroke.Color = THEME.Border
+	templatePopupStroke.Thickness = 1
+	templatePopupStroke.Transparency = 0.35
+	templatePopupStroke.Parent = templatePopup
+
+	local templatePopupLayout = Instance.new("UIListLayout")
+	templatePopupLayout.FillDirection = Enum.FillDirection.Vertical
+	templatePopupLayout.Padding = UDim.new(0, 6)
+	templatePopupLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	templatePopupLayout.Parent = templatePopup
+
+	local templateOpen = false
+	local function closeTemplate()
+		templateOpen = false
+		templatePopup.Visible = false
+	end
+	local function setTemplate(t)
+		selectedTemplate = t
+		templateMain.Text = "Template: " .. tostring(t)
+		closeTemplate()
+	end
+
+	local templateOptions = { "None", "Obby", "Tycoon", "Simulator", "Shooter" }
+	for i, t in ipairs(templateOptions) do
+		local label = tostring(t)
+		local opt = makeDropdownOption(templatePopup, label)
+		opt.LayoutOrder = i
+		opt.MouseButton1Click:Connect(function()
+			setTemplate(label)
+		end)
+	end
+
+	templateMain.MouseButton1Click:Connect(function()
+		templateOpen = not templateOpen
+		templatePopup.Visible = templateOpen
+	end)
+end
+
+-- Prompt input + Enhance Prompt button (inside/right)
+local promptInputFrame = Instance.new("Frame")
+promptInputFrame.BackgroundTransparency = 1
+promptInputFrame.Size = UDim2.new(1, 0, 0, 78)
+promptInputFrame.LayoutOrder = 3
+promptInputFrame.Parent = promptPanel
+
 local promptBox = Instance.new("TextBox")
-promptBox.PlaceholderText = "Describe your game"
+promptBox.PlaceholderText = "Describe your game or feature..."
 promptBox.Text = ""
-promptBox.Size = UDim2.new(1, 0, 0, 72)
+promptBox.Size = UDim2.new(1, -150, 1, 0)
 promptBox.Position = UDim2.new(0, 0, 0, 0)
 promptBox.BackgroundColor3 = THEME.Surface
 promptBox.TextColor3 = THEME.Text
@@ -507,9 +1059,9 @@ promptBox.TextXAlignment = Enum.TextXAlignment.Left
 promptBox.TextYAlignment = Enum.TextYAlignment.Top
 promptBox.Font = Enum.Font.SourceSans
 promptBox.TextSize = 14
-promptBox.LayoutOrder = 2
-
 promptBox.MultiLine = true
+promptBox.ZIndex = 2
+promptBox.Parent = promptInputFrame
 
 local promptPadding = Instance.new("UIPadding")
 promptPadding.PaddingTop = UDim.new(0, 8)
@@ -537,7 +1089,28 @@ promptBox.FocusLost:Connect(function()
 	promptStroke.Transparency = 0.35
 end)
 
-promptBox.Parent = promptPanel
+local enhancePromptBtn = Instance.new("TextButton")
+enhancePromptBtn.Name = "EnhancePromptBtn"
+enhancePromptBtn.Text = "✨ Enhance Prompt"
+enhancePromptBtn.BackgroundColor3 = THEME.Panel
+enhancePromptBtn.BorderSizePixel = 0
+enhancePromptBtn.TextColor3 = THEME.Text
+enhancePromptBtn.Font = Enum.Font.SourceSansSemibold
+enhancePromptBtn.TextSize = 12
+enhancePromptBtn.AutoButtonColor = false
+enhancePromptBtn.Size = UDim2.new(0, 145, 0, 28)
+enhancePromptBtn.Position = UDim2.new(1, -145, 0, 6)
+enhancePromptBtn.ZIndex = 5
+enhancePromptBtn.Parent = promptInputFrame
+
+styleButton(enhancePromptBtn, THEME.Primary2)
+
+do
+	local s = enhancePromptBtn:FindFirstChildOfClass("UIStroke")
+	if s then
+		s.Transparency = 0.25
+	end
+end
 
 local actionsPanel = addPanel(rootScroll, 0)
 actionsPanel.LayoutOrder = 2
@@ -553,11 +1126,11 @@ addSectionLabel(actionsPanel, "Actions").LayoutOrder = 1
 
 local generateBtn = Instance.new("TextButton")
 generateBtn.Text = "Generate"
-generateBtn.Size = UDim2.new(1, 0, 0, 36)
+generateBtn.Size = UDim2.new(1, 0, 0, 44)
 generateBtn.Position = UDim2.new(0, 0, 0, 0)
 generateBtn.LayoutOrder = 2
 styleButton(generateBtn, THEME.Primary)
-generateBtn.TextSize = 15
+generateBtn.TextSize = 16
 generateBtn.TextColor3 = Color3.fromRGB(16, 50, 92)
 
 do
@@ -579,19 +1152,51 @@ end
 
 local secondaryRow = Instance.new("Frame")
 secondaryRow.BackgroundTransparency = 1
-secondaryRow.Size = UDim2.new(1, 0, 0, 36)
+secondaryRow.Size = UDim2.new(1, 0, 0, 38)
 secondaryRow.LayoutOrder = 3
 secondaryRow.Parent = actionsPanel
-secondaryRow.Visible = false
+secondaryRow.Visible = true
 
 local secondaryLayout = Instance.new("UIListLayout")
 secondaryLayout.FillDirection = Enum.FillDirection.Horizontal
 secondaryLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 secondaryLayout.SortOrder = Enum.SortOrder.LayoutOrder
 secondaryLayout.Padding = UDim.new(0, 8)
+secondaryLayout.HorizontalFlex = Enum.UIFlexAlignment.Fill
 secondaryLayout.Parent = secondaryRow
 
 generateBtn.Parent = actionsPanel
+
+-- Secondary agent actions row
+local addFeatureBtn = Instance.new("TextButton")
+addFeatureBtn.Text = "+ Add Feature"
+addFeatureBtn.Size = UDim2.new(0, 0, 0, 36)
+addFeatureBtn.Position = UDim2.new(0, 0, 0, 0)
+addFeatureBtn.LayoutOrder = 1
+styleButton(addFeatureBtn, THEME.Panel)
+addFeatureBtn.TextSize = 13
+addFeatureBtn.TextColor3 = THEME.Text
+addFeatureBtn.Parent = secondaryRow
+
+local fixBugsBtn = Instance.new("TextButton")
+fixBugsBtn.Text = "Fix Bugs"
+fixBugsBtn.Size = UDim2.new(0, 0, 0, 36)
+fixBugsBtn.Position = UDim2.new(0, 0, 0, 0)
+fixBugsBtn.LayoutOrder = 2
+styleButton(fixBugsBtn, THEME.Panel)
+fixBugsBtn.TextSize = 13
+fixBugsBtn.TextColor3 = THEME.Text
+fixBugsBtn.Parent = secondaryRow
+
+local optimizeBtn = Instance.new("TextButton")
+optimizeBtn.Text = "Optimize"
+optimizeBtn.Size = UDim2.new(0, 0, 0, 36)
+optimizeBtn.Position = UDim2.new(0, 0, 0, 0)
+optimizeBtn.LayoutOrder = 3
+styleButton(optimizeBtn, THEME.Panel)
+optimizeBtn.TextSize = 13
+optimizeBtn.TextColor3 = THEME.Text
+optimizeBtn.Parent = secondaryRow
 
 local refineBtn = Instance.new("TextButton")
 refineBtn.Text = "Refine"
@@ -652,7 +1257,7 @@ local stopBtn = Instance.new("TextButton")
 stopBtn.Text = "Stop"
 stopBtn.Size = UDim2.new(0, 0, 0, 36)
 stopBtn.Position = UDim2.new(0, 0, 0, 0)
-stopBtn.LayoutOrder = 2
+stopBtn.LayoutOrder = 3
 styleButton(stopBtn, Color3.fromRGB(33, 40, 64))
 stopBtn.Parent = controlRow
 
@@ -674,7 +1279,7 @@ local undoBtn = Instance.new("TextButton")
 undoBtn.Text = "Undo"
 undoBtn.Size = UDim2.new(0, 0, 0, 36)
 undoBtn.Position = UDim2.new(0, 0, 0, 0)
-undoBtn.LayoutOrder = 1
+undoBtn.LayoutOrder = 2
 styleButton(undoBtn, Color3.fromRGB(33, 40, 64))
 undoBtn.Parent = controlRow
 
@@ -698,9 +1303,9 @@ outputLayout.SortOrder = Enum.SortOrder.LayoutOrder
 outputLayout.Padding = UDim.new(0, 6)
 outputLayout.Parent = outputPanel
 
-local outputLabel = addSectionLabel(outputPanel, "Output")
+local outputLabel = addSectionLabel(outputPanel, "AI Console")
 outputLabel.LayoutOrder = 1
-outputLabel.Visible = false
+outputLabel.Visible = true
 
 local outputInner = Instance.new("Frame")
 outputInner.BackgroundTransparency = 1
@@ -784,7 +1389,7 @@ logStroke.Parent = logScroll
 logScroll.Parent = outputInner
 
 local logBox = Instance.new("TextLabel")
-logBox.Text = "Logs..."
+logBox.Text = "Idle."
 logBox.Size = UDim2.new(1, -12, 0, 0)
 logBox.Position = UDim2.new(0, 6, 0, 6)
 logBox.BackgroundTransparency = 1
@@ -834,6 +1439,20 @@ local cancelToken = 0
 local undoStack = {}
 local redoStack = {}
 
+-- UI/feature state (kept local to the plugin for now; backend can consume later)
+local liveModeEnabled = false
+local memoryEnabled = false
+local selectedModelTier = "auto" -- "auto" | "fast" | "balanced" | "smart"
+local selectedTemplate = "None" -- "None" | "Obby" | "Tycoon" | "Simulator" | "Shooter"
+
+-- Mock credits (future-ready for real pricing)
+local credits = 100
+local creditsLabel = nil -- assigned by header UI
+
+-- Client-side memory (UI-level). We store only prompt + script names for safety/perf.
+local memoryEntries = {}
+local MAX_MEMORY_ENTRIES = 4
+
 local logLines = {}
 local function refreshLogScroll()
 	task.defer(function()
@@ -863,6 +1482,217 @@ local function appendLog(line)
 	refreshLogScroll()
 end
 
+local function estimatePromptTier(promptText)
+	local p = tostring(promptText or "")
+	local len = #p
+	local lower = string.lower(p)
+
+	-- Lightweight heuristic: more length + more "systems" keywords => higher tier.
+	local keywords = {
+		"enemy",
+		"npc",
+		"wave",
+		"checkpoint",
+		"ui",
+		"inventory",
+		"combat",
+		"weapon",
+		"shop",
+		"economy",
+		"multiplayer",
+		"saving",
+		"dialogue",
+		"quest",
+		"pathfinding",
+		"particles",
+		"effects",
+		"music",
+		"admin",
+	}
+
+	local score = 0
+	if len < 180 then
+		score = 0
+	elseif len < 500 then
+		score = 1
+	elseif len < 900 then
+		score = 2
+	else
+		score = 3
+	end
+
+	for _, k in ipairs(keywords) do
+		if string.find(lower, k, 1, true) then
+			score += 0.5
+		end
+	end
+
+	if score < 1.6 then
+		return "fast"
+	elseif score < 2.9 then
+		return "balanced"
+	end
+	return "smart"
+end
+
+local function resolveModelTierForPrompt(promptText)
+	if selectedModelTier ~= "auto" then
+		return selectedModelTier
+	end
+	return estimatePromptTier(promptText)
+end
+
+local function getTemplateClause()
+	if selectedTemplate == "None" then
+		return ""
+	end
+	return ("\n\nTemplate preference: %s (use it as a strong starting point when applicable)."):format(selectedTemplate)
+end
+
+local function extractScriptNamesFromStructuredBuild(build)
+	local names = {}
+	if type(build) ~= "table" or type(build.instances) ~= "table" then
+		return names
+	end
+	for _, inst in ipairs(build.instances) do
+		if type(inst) == "table" then
+			local cn = inst.className
+			if cn == "Script" or cn == "LocalScript" or cn == "ModuleScript" then
+				local n = inst.name or inst.id or cn
+				if n and n ~= "" then
+					table.insert(names, tostring(n))
+				end
+			end
+		end
+	end
+	return names
+end
+
+local function getMemoryContextText()
+	if not memoryEnabled or #memoryEntries == 0 then
+		return ""
+	end
+
+	local parts = {}
+	table.insert(parts, "Memory context (previous builds):")
+	local startAt = math.max(1, #memoryEntries - 2)
+	for i = startAt, #memoryEntries do
+		local e = memoryEntries[i]
+		if e and e.prompt then
+			local scripts = e.scripts and #e.scripts > 0 and table.concat(e.scripts, ", ") or "none"
+			table.insert(parts, ("- Prompt: %s\n  Scripts: %s"):format(tostring(e.prompt), scripts))
+		end
+	end
+	return table.concat(parts, "\n")
+end
+
+local function augmentPromptForAI(promptText)
+	local s = tostring(promptText or "")
+	s = s .. getTemplateClause()
+	local mem = getMemoryContextText()
+	if mem ~= "" then
+		s = s .. ("\n\n%s"):format(mem)
+	end
+	return s
+end
+
+local function saveMemoryFromStructuredBuild(promptText, build)
+	if not memoryEnabled then
+		return
+	end
+
+	-- Store a compact "generated scripts" memory for the next request.
+	-- We keep only script names + a short source snippet (privacy/perf friendly).
+	local scripts = {}
+	if type(build) == "table" and type(build.instances) == "table" then
+		for _, inst in ipairs(build.instances) do
+			if type(inst) == "table" then
+				local cn = inst.className
+				if cn == "Script" or cn == "LocalScript" or cn == "ModuleScript" then
+					local n = inst.name or inst.id or cn
+					if n and n ~= "" then
+						local src = tostring(inst.source or "")
+						src = src:gsub("\r", ""):gsub("\n", " ")
+						if #src > 0 then
+							src = string.sub(src, 1, 180)
+							table.insert(scripts, tostring(n) .. ": " .. src)
+						else
+							table.insert(scripts, tostring(n))
+						end
+					end
+				end
+			end
+		end
+	end
+
+	table.insert(memoryEntries, {
+		prompt = tostring(promptText or ""),
+		scripts = scripts,
+	})
+	while #memoryEntries > MAX_MEMORY_ENTRIES do
+		table.remove(memoryEntries, 1)
+	end
+end
+
+local function getEstimatedCredits(tier)
+	if tier == "fast" then
+		return 1
+	elseif tier == "balanced" then
+		return 2
+	end
+	return 3
+end
+
+local function updateCreditsLabel()
+	if creditsLabel and creditsLabel.Parent then
+		creditsLabel.Text = ("Credits: %d"):format(credits)
+	end
+end
+
+local function spendCreditsForTier(tier)
+	local cost = getEstimatedCredits(tier)
+	credits = math.max(0, credits - cost)
+	updateCreditsLabel()
+end
+
+local typingToken = 0
+local function typewriterAppendLog(fullText, requestCancelToken, speedSecondsPerChar)
+	requestCancelToken = requestCancelToken or cancelToken
+	speedSecondsPerChar = speedSecondsPerChar or 0.002
+
+	typingToken += 1
+	local myTyping = typingToken
+
+	local text = tostring(fullText or "")
+	table.insert(logLines, "")
+	local targetIndex = #logLines
+	logBox.Text = table.concat(logLines, "\n")
+	refreshLogScroll()
+
+	for i = 1, #text do
+		if cancelToken ~= requestCancelToken then
+			return
+		end
+		if myTyping ~= typingToken then
+			return
+		end
+		logLines[targetIndex] = string.sub(text, 1, i)
+		logBox.Text = table.concat(logLines, "\n")
+		refreshLogScroll()
+		task.wait(speedSecondsPerChar)
+	end
+end
+
+local function appendConsoleLine(line, opts)
+	opts = opts or {}
+	local text = tostring(line or "")
+	if opts.typewriter and liveModeEnabled then
+		typewriterAppendLog(text, cancelToken, opts.speedSecondsPerChar)
+		return
+	end
+	appendLog(text)
+end
+
 -- Keep Toolbox logs clean by default. Set true only when debugging asset IDs.
 local TOOLBOX_VERBOSE_LOGS = false
 -- When true, suppress ALL toolbox-related log lines (success + errors).
@@ -881,14 +1711,15 @@ local function setButtonsEnabled(enabled)
 	end
 
 	if enabled then
-		statusPill.Text = "READY"
+		statusPill.Text = "IDLE"
 		statusPill.BackgroundColor3 = THEME.Surface
 		statusStroke.Color = THEME.Border
 	else
-		statusPill.Text = "WORKING"
+		statusPill.Text = "GENERATING"
 		statusPill.BackgroundColor3 = brighten(THEME.Primary, 0.35)
 		statusStroke.Color = THEME.Primary
 	end
+	statusPill.Visible = true
 
 	setVisual(generateBtn, enabled)
 	setVisual(refineBtn, enabled)
@@ -1890,7 +2721,7 @@ clearBtn.MouseButton1Click:Connect(function()
 	lastStructuredBuild = nil
 	lastPrompt = ""
 	promptBox.Text = ""
-	promptBox.PlaceholderText = "Describe your game"
+	promptBox.PlaceholderText = "Describe your game or feature..."
 	undoStack = {}
 	redoStack = {}
 	setLog(("Cleared AI build folders: %d"):format(removed))
@@ -1977,6 +2808,235 @@ local function autoImportToolboxEnvironmentAssets(gamePromptText, requestToken)
 	-- Silent by default.
 end
 
+local function getTemplateMechanicsGuide()
+	if selectedTemplate == "Obby" then
+		return table.concat({
+			"Include: spawn area, sequential obstacles, checkpoints, fail/reset zones, and a fair landing path.",
+			"Add: progression UI (e.g., checkpoint count), difficulty ramp, and clear win condition.",
+		}, "\n")
+	elseif selectedTemplate == "Tycoon" then
+		return table.concat({
+			"Include: economy/leaderstats (cash), purchasable upgrades, and a simple scaling production loop.",
+			"Add: player growth loop, spawn safety, and basic UI for upgrades.",
+		}, "\n")
+	elseif selectedTemplate == "Simulator" then
+		return table.concat({
+			"Include: core click/loop mechanic, progression counter, and upgrade path.",
+			"Add: objective hints, scaling rewards, and a restart/rebirth loop if it fits.",
+		}, "\n")
+	elseif selectedTemplate == "Shooter" then
+		return table.concat({
+			"Include: weapon/tool flow, targets/enemies, health/damage, cooldown/ammo model (simple).",
+			"Add: HUD (score/HP), round objective, and at least one enemy interaction loop.",
+		}, "\n")
+	end
+	return ""
+end
+
+local function runAgentRefine(instructionText, agentLabel)
+	if inPlayClientMode() then
+		setLog((agentLabel or "Action") .. " works only in Edit mode. Stop Play and try again.")
+		return
+	end
+	if isBusy then return end
+	if not lastStructuredBuild then
+		setLog((agentLabel or "Action") .. " requires an existing build. Generate first.")
+		return
+	end
+	if instructionText == "" then
+		setLog("Type an instruction in the prompt box first.")
+		return
+	end
+
+	local myToken = cancelToken
+	local tier = resolveModelTierForPrompt(lastPrompt .. "\n" .. instructionText)
+	local estCost = getEstimatedCredits(tier)
+	if credits < estCost then
+		appendLog(("Insufficient credits for tier %s. Need %d."):format(tier, estCost))
+		return
+	end
+	spendCreditsForTier(tier)
+
+	isBusy = true
+	setButtonsEnabled(false)
+
+	if liveModeEnabled then
+		setLog("")
+		appendConsoleLine("Analyzing request...", { typewriter = false })
+		task.wait(0.12)
+		appendConsoleLine(("Selecting model: %s..."):format(tier:gsub("^%l", string.upper)), { typewriter = false })
+		task.wait(0.12)
+		appendConsoleLine("Generating scripts...", { typewriter = false })
+		task.wait(0.18)
+	end
+
+	local refinedPrompt = augmentPromptForAI(lastPrompt)
+	local data, err = requestWithTimeout(getApiBase() .. "/ai-final", {
+		prompt = refinedPrompt,
+		fast = tier == "fast",
+		structured = true,
+		modelTier = tier,
+		action = "refine",
+		instruction = instructionText,
+		build = lastStructuredBuild,
+	}, 45)
+
+	if cancelToken ~= myToken then
+		return
+	end
+	if err then
+		setLog((agentLabel or "Action") .. " request failed: " .. err)
+		isBusy = false
+		setButtonsEnabled(true)
+		return
+	end
+
+	appendConsoleLine("Injecting into workspace...", { typewriter = false })
+	appendConsoleLine(tostring(data.message or "OK"), { typewriter = true, speedSecondsPerChar = 0.0015 })
+	if cancelToken ~= myToken then
+		return
+	end
+
+	if type(data.build) == "table" then
+		local ok, msg = applyStructuredBuild(data.build)
+		if ok then
+			lastStructuredBuild = data.build
+			promptBox.Text = ""
+			promptBox.PlaceholderText = "Type next refine instruction, then click Refine"
+			saveMemoryFromStructuredBuild(lastPrompt, data.build)
+			appendConsoleLine("Done. " .. msg, { typewriter = true, speedSecondsPerChar = 0.001 })
+			appendConsoleLine("Updating environment and importing toolbox assets...", { typewriter = false })
+			if cancelToken ~= myToken then
+				return
+			end
+			autoImportToolboxEnvironmentAssets(lastPrompt .. "\n\nAgent action: " .. tostring(agentLabel) .. "\n" .. instructionText, myToken)
+		else
+			appendConsoleLine("Structured build failed: " .. tostring(msg), { typewriter = false })
+		end
+	else
+		appendConsoleLine("No structured build returned. (Check backend logs / env vars)", { typewriter = false })
+	end
+
+	isBusy = false
+	setButtonsEnabled(true)
+end
+
+enhancePromptBtn.MouseButton1Click:Connect(function()
+	if inPlayClientMode() then
+		setLog("Enhance Prompt works only in Edit mode. Stop Play and try again.")
+		return
+	end
+	if isBusy then return end
+
+	local myToken = cancelToken
+	local promptRaw = promptBox.Text
+	if promptRaw == "" then
+		setLog("Enter a prompt first.")
+		return
+	end
+
+	local tier = resolveModelTierForPrompt(promptRaw)
+	local estCost = getEstimatedCredits(tier)
+	if credits < estCost then
+		appendLog(("Insufficient credits for tier %s. Need %d."):format(tier, estCost))
+		return
+	end
+	spendCreditsForTier(tier)
+
+	isBusy = true
+	setButtonsEnabled(false)
+
+	if liveModeEnabled then
+		setLog("")
+		appendConsoleLine("Analyzing request...", { typewriter = false })
+		task.wait(0.12)
+		appendConsoleLine(("Selecting model: %s..."):format(tier:gsub("^%l", string.upper)), { typewriter = false })
+		task.wait(0.12)
+		appendConsoleLine("Generating scripts...", { typewriter = false })
+		task.wait(0.18)
+	end
+
+	local data, err = requestWithTimeout(getApiBase() .. "/plan", {
+		prompt = promptRaw,
+		fast = false,
+		modelTier = tier,
+	}, 25)
+
+	if cancelToken ~= myToken then
+		return
+	end
+	if err then
+		setLog("Enhance Prompt failed: " .. err)
+		isBusy = false
+		setButtonsEnabled(true)
+		return
+	end
+
+	local planText = tostring(data.plan or "")
+	local guide = getTemplateMechanicsGuide()
+	local enhanced = promptRaw
+
+	if guide ~= "" then
+		enhanced = enhanced .. ("\n\nExpanded requirements for %s:\n%s"):format(selectedTemplate, guide)
+	end
+
+	if planText ~= "" then
+		enhanced = enhanced .. ("\n\nAI build plan (follow order):\n%s"):format(planText)
+	end
+
+	local mem = getMemoryContextText()
+	if mem ~= "" then
+		enhanced = enhanced .. ("\n\n%s"):format(mem)
+	end
+
+	promptBox.Text = enhanced
+	promptBox.PlaceholderText = "Describe your game or feature..."
+	appendConsoleLine("Prompt enhanced. Ready to Generate.", { typewriter = true, speedSecondsPerChar = 0.001 })
+	if cancelToken ~= myToken then
+		return
+	end
+
+	isBusy = false
+	setButtonsEnabled(true)
+end)
+
+addFeatureBtn.MouseButton1Click:Connect(function()
+	if inPlayClientMode() then
+		setLog("Add Feature works only in Edit mode. Stop Play and try again.")
+		return
+	end
+	local detail = promptBox.Text
+	if detail == "" then
+		setLog("Describe the feature you want to add in the prompt box first.")
+		return
+	end
+	runAgentRefine("Add this feature to existing game:\n" .. detail, "Add Feature")
+end)
+
+fixBugsBtn.MouseButton1Click:Connect(function()
+	if inPlayClientMode() then
+		setLog("Fix Bugs works only in Edit mode. Stop Play and try again.")
+		return
+	end
+	local detail = promptBox.Text
+	if detail == "" then
+		detail = "Fix bugs, edge cases, and runtime errors in scripts."
+	end
+	runAgentRefine("Analyze and fix bugs in current scripts:\n" .. detail, "Fix Bugs")
+end)
+
+optimizeBtn.MouseButton1Click:Connect(function()
+	if inPlayClientMode() then
+		setLog("Optimize works only in Edit mode. Stop Play and try again.")
+		return
+	end
+	local detail = promptBox.Text
+	if detail == "" then
+		detail = "Optimize performance and structure without changing gameplay intent."
+	end
+	runAgentRefine("Optimize performance and structure:\n" .. detail, "Optimize")
+end)
+
 generateBtn.MouseButton1Click:Connect(function()
 	if inPlayClientMode() then
 		setLog("Generate works only in Edit mode. Stop Play and try again.")
@@ -1984,24 +3044,46 @@ generateBtn.MouseButton1Click:Connect(function()
 	end
 	if isBusy then return end
 	local myToken = cancelToken
-	local prompt = promptBox.Text
-	if prompt == "" then
+	local promptRaw = promptBox.Text
+	if promptRaw == "" then
 		setLog("Enter a game prompt first.")
 		return
 	end
 
+	local tier = resolveModelTierForPrompt(promptRaw)
+	local estCost = getEstimatedCredits(tier)
+	if credits < estCost then
+		appendLog(("Insufficient credits for tier %s. Need %d."):format(tier, estCost))
+		return
+	end
+	spendCreditsForTier(tier)
+
 	isBusy = true
 	setButtonsEnabled(false)
-	local stop = startProgress("Generating")
+
+	-- AI Console: step-based logs + simulated streaming
+	if liveModeEnabled then
+		setLog("")
+		appendConsoleLine("Analyzing request...", { typewriter = false })
+		task.wait(0.12)
+		appendConsoleLine(("Selecting model: %s..."):format(tier:gsub("^%l", string.upper)), { typewriter = false })
+		task.wait(0.12)
+		appendConsoleLine("Generating scripts...", { typewriter = false })
+		task.wait(0.18)
+	end
+
+	local augmentedPrompt = augmentPromptForAI(promptRaw)
 	local data, err = requestWithTimeout(getApiBase() .. "/ai-final", {
-		prompt = prompt,
-		fast = true,
+		prompt = augmentedPrompt,
+		fast = tier == "fast",
 		structured = true,
+		modelTier = tier,
 	}, 45)
-	stop()
+
 	if cancelToken ~= myToken then
 		return
 	end
+
 	if err then
 		setLog("Generate request failed: " .. err)
 		isBusy = false
@@ -2009,22 +3091,33 @@ generateBtn.MouseButton1Click:Connect(function()
 		return
 	end
 
-	setLog(tostring(data.message or "OK"))
+	appendConsoleLine("Injecting into workspace...", { typewriter = false })
+
+	-- Stream the final message (typewriter) in Live Mode
+	appendConsoleLine(tostring(data.message or "OK"), { typewriter = true, speedSecondsPerChar = 0.0015 })
+	if cancelToken ~= myToken then
+		return
+	end
+
 	if type(data.build) == "table" then
 		local ok, msg = applyStructuredBuild(data.build)
 		if ok then
-			lastPrompt = prompt
+			lastPrompt = promptRaw
 			lastStructuredBuild = data.build
 			promptBox.Text = ""
 			promptBox.PlaceholderText = "Type refine instruction, then click Refine"
-			appendLog("Done. " .. msg)
-			appendLog("Analyzing environment and importing toolbox assets...")
-			autoImportToolboxEnvironmentAssets(prompt, myToken)
+			saveMemoryFromStructuredBuild(promptRaw, data.build)
+			appendConsoleLine("Done. " .. msg, { typewriter = true, speedSecondsPerChar = 0.001 })
+			appendConsoleLine("Analyzing environment and importing toolbox assets...", { typewriter = false })
+			if cancelToken ~= myToken then
+				return
+			end
+			autoImportToolboxEnvironmentAssets(promptRaw, myToken)
 		else
-			appendLog("Structured build failed: " .. tostring(msg))
+			appendConsoleLine("Structured build failed: " .. tostring(msg), { typewriter = false })
 		end
 	else
-		appendLog("No structured build returned. (Check backend logs / env vars)")
+		appendConsoleLine("No structured build returned. (Check backend logs / env vars)", { typewriter = false })
 	end
 
 	isBusy = false
@@ -2048,18 +3141,38 @@ refineBtn.MouseButton1Click:Connect(function()
 		return
 	end
 
+	local tier = resolveModelTierForPrompt(lastPrompt .. "\n" .. instruction)
+	local estCost = getEstimatedCredits(tier)
+	if credits < estCost then
+		appendLog(("Insufficient credits for tier %s. Need %d."):format(tier, estCost))
+		return
+	end
+	spendCreditsForTier(tier)
+
 	isBusy = true
 	setButtonsEnabled(false)
-	local stop = startProgress("Refining")
+
+	if liveModeEnabled then
+		setLog("")
+		appendConsoleLine("Analyzing request...", { typewriter = false })
+		task.wait(0.12)
+		appendConsoleLine(("Selecting model: %s..."):format(tier:gsub("^%l", string.upper)), { typewriter = false })
+		task.wait(0.12)
+		appendConsoleLine("Generating scripts...", { typewriter = false })
+		task.wait(0.18)
+	end
+
+	local refinedPrompt = augmentPromptForAI(lastPrompt)
 	local data, err = requestWithTimeout(getApiBase() .. "/ai-final", {
-		prompt = lastPrompt,
-		fast = true,
+		prompt = refinedPrompt,
+		fast = tier == "fast",
 		structured = true,
+		modelTier = tier,
 		action = "refine",
 		instruction = instruction,
 		build = lastStructuredBuild,
 	}, 45)
-	stop()
+
 	if cancelToken ~= myToken then
 		return
 	end
@@ -2070,22 +3183,30 @@ refineBtn.MouseButton1Click:Connect(function()
 		return
 	end
 
-	setLog(tostring(data.message or "OK"))
+	appendConsoleLine("Injecting into workspace...", { typewriter = false })
+	appendConsoleLine(tostring(data.message or "OK"), { typewriter = true, speedSecondsPerChar = 0.0015 })
+	if cancelToken ~= myToken then
+		return
+	end
+
 	if type(data.build) == "table" then
 		local ok, msg = applyStructuredBuild(data.build)
 		if ok then
 			lastStructuredBuild = data.build
 			promptBox.Text = ""
 			promptBox.PlaceholderText = "Type next refine instruction, then click Refine"
-			appendLog("Done. " .. msg)
-			appendLog("Updating environment and importing toolbox assets...")
-			-- Refine instruction may change environment needs, so include it in the asset prompt.
+			saveMemoryFromStructuredBuild(lastPrompt, data.build)
+			appendConsoleLine("Done. " .. msg, { typewriter = true, speedSecondsPerChar = 0.001 })
+			appendConsoleLine("Updating environment and importing toolbox assets...", { typewriter = false })
+			if cancelToken ~= myToken then
+				return
+			end
 			autoImportToolboxEnvironmentAssets(lastPrompt .. "\n\nRefine instruction: " .. instruction, myToken)
 		else
-			appendLog("Structured build failed: " .. tostring(msg))
+			appendConsoleLine("Structured build failed: " .. tostring(msg), { typewriter = false })
 		end
 	else
-		appendLog("No structured build returned. (Check backend logs / env vars)")
+		appendConsoleLine("No structured build returned. (Check backend logs / env vars)", { typewriter = false })
 	end
 
 	isBusy = false
