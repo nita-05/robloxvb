@@ -39,6 +39,34 @@ local THEME = {
 	ButtonRadius = UDim.new(0, 14), -- pill buttons like reference
 }
 
+-- UI/feature state must be defined BEFORE UI widgets reference it.
+local liveModeEnabled = false
+local memoryEnabled = false
+local selectedModelTier = "auto" -- "auto" | "fast" | "balanced" | "smart"
+local selectedTemplate = "None" -- "None" | "Obby" | "Tycoon" | "Simulator" | "Shooter"
+
+-- Mock credits (future-ready for real pricing)
+local credits = 100
+local creditsLabel = nil -- assigned by header UI
+
+-- Client-side memory (UI-level). We store prompt + compact script info.
+local memoryEntries = {}
+local MAX_MEMORY_ENTRIES = 4
+
+-- Top-level overlay for dropdown popups (prevents clipping in panels/scroll frames)
+local overlay = Instance.new("Frame")
+overlay.Name = "Overlay"
+overlay.BackgroundTransparency = 1
+overlay.Size = UDim2.new(1, 0, 1, 0)
+overlay.ZIndex = 500
+overlay.Parent = frame
+
+local function toOverlayPos(guiObj)
+	local rootAbs = frame.AbsolutePosition
+	local a = guiObj.AbsolutePosition
+	return Vector2.new(a.X - rootAbs.X, a.Y - rootAbs.Y)
+end
+
 do
 	-- Background "glow" layers (no external assets)
 	local glow = Instance.new("Frame")
@@ -594,15 +622,15 @@ local function makeModelDropdown()
 	stroke.Transparency = 0.35
 	stroke.Parent = main
 
+	-- Popup renders in the global overlay to avoid clipping.
 	local popup = Instance.new("Frame")
 	popup.Name = "ModelDropdownPopup"
 	popup.BackgroundColor3 = THEME.Surface
 	popup.BorderSizePixel = 0
 	popup.Visible = false
 	popup.Size = UDim2.new(0, 165, 0, 128)
-	popup.ZIndex = 60
-	popup.Position = UDim2.new(0, 0, 1, 6)
-	popup.Parent = main
+	popup.ZIndex = 600
+	popup.Parent = overlay
 	local popupCorner = Instance.new("UICorner")
 	popupCorner.CornerRadius = UDim.new(0, 10)
 	popupCorner.Parent = popup
@@ -655,7 +683,13 @@ local function makeModelDropdown()
 
 	main.MouseButton1Click:Connect(function()
 		open = not open
-		popup.Visible = open
+		if open then
+			local p = toOverlayPos(main)
+			popup.Position = UDim2.new(0, p.X, 0, p.Y + main.AbsoluteSize.Y + 6)
+			popup.Visible = true
+		else
+			close()
+		end
 	end)
 
 	return main
@@ -995,9 +1029,8 @@ do
 	templatePopup.BorderSizePixel = 0
 	templatePopup.Visible = false
 	templatePopup.Size = UDim2.new(0, 190, 0, 132)
-	templatePopup.ZIndex = 60
-	templatePopup.Position = UDim2.new(0, 0, 1, 6)
-	templatePopup.Parent = templateMain
+	templatePopup.ZIndex = 600
+	templatePopup.Parent = overlay
 
 	local templatePopupCorner = Instance.new("UICorner")
 	templatePopupCorner.CornerRadius = UDim.new(0, 10)
@@ -1038,7 +1071,13 @@ do
 
 	templateMain.MouseButton1Click:Connect(function()
 		templateOpen = not templateOpen
-		templatePopup.Visible = templateOpen
+		if templateOpen then
+			local p = toOverlayPos(templateMain)
+			templatePopup.Position = UDim2.new(0, p.X, 0, p.Y + templateMain.AbsoluteSize.Y + 6)
+			templatePopup.Visible = true
+		else
+			templatePopup.Visible = false
+		end
 	end)
 end
 
@@ -1441,20 +1480,6 @@ local lastStructuredBuild = nil
 local cancelToken = 0
 local undoStack = {}
 local redoStack = {}
-
--- UI/feature state (kept local to the plugin for now; backend can consume later)
-local liveModeEnabled = false
-local memoryEnabled = false
-local selectedModelTier = "auto" -- "auto" | "fast" | "balanced" | "smart"
-local selectedTemplate = "None" -- "None" | "Obby" | "Tycoon" | "Simulator" | "Shooter"
-
--- Mock credits (future-ready for real pricing)
-local credits = 100
-local creditsLabel = nil -- assigned by header UI
-
--- Client-side memory (UI-level). We store only prompt + script names for safety/perf.
-local memoryEntries = {}
-local MAX_MEMORY_ENTRIES = 4
 
 local logLines = {}
 local function refreshLogScroll()
