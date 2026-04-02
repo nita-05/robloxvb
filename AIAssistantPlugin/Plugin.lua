@@ -289,14 +289,14 @@ headerH.FillDirection = Enum.FillDirection.Horizontal
 headerH.HorizontalAlignment = Enum.HorizontalAlignment.Left
 headerH.VerticalAlignment = Enum.VerticalAlignment.Center
 headerH.SortOrder = Enum.SortOrder.LayoutOrder
-headerH.Padding = UDim.new(0, 10)
+headerH.Padding = UDim.new(0, 8)
 headerH.Parent = headerContent
 
 local brandTile = Instance.new("Frame")
 brandTile.Name = "BrandTile"
 brandTile.BackgroundColor3 = Color3.fromRGB(10, 16, 34)
 brandTile.BorderSizePixel = 0
-brandTile.Size = UDim2.new(0, 40, 0, 40)
+brandTile.Size = UDim2.new(0, 26, 0, 26)
 brandTile.LayoutOrder = 1
 brandTile.Parent = headerContent
 
@@ -404,7 +404,7 @@ local brandBadge = Instance.new("Frame")
 brandBadge.Name = "BrandBadge"
 brandBadge.AnchorPoint = Vector2.new(0.5, 0.5)
 brandBadge.Position = UDim2.new(0.5, 0, 0.5, 0)
-brandBadge.Size = UDim2.new(0, 34, 0, 34)
+brandBadge.Size = UDim2.new(0, 22, 0, 22)
 brandBadge.BackgroundColor3 = Color3.fromRGB(100, 70, 235)
 brandBadge.BorderSizePixel = 0
 brandBadge.Parent = brandTile
@@ -434,8 +434,12 @@ brandV.Size = UDim2.new(1, 0, 1, 0)
 brandV.Text = "V"
 brandV.TextColor3 = Color3.fromRGB(229, 236, 255)
 brandV.Font = Enum.Font.GothamBold
-brandV.TextSize = 22
+brandV.TextSize = 14
 brandV.Parent = brandBadge
+
+-- Make sure the visible badge actually fits the smaller brand tile.
+brandBadge.ZIndex = 12
+brandV.ZIndex = 13
 
 local titleStack = Instance.new("Frame")
 titleStack.Name = "TitleStack"
@@ -990,6 +994,9 @@ promptLayout.Parent = promptPanel
 
 addSectionLabel(promptPanel, "Prompt").LayoutOrder = 1
 
+-- Forward declare so Template dropdown can auto-fill it.
+local promptBox
+
 -- Template dropdown (above prompt)
 do
 	local templateRow = Instance.new("Frame")
@@ -1146,7 +1153,7 @@ promptInputFrame.Size = UDim2.new(1, 0, 0, 78)
 promptInputFrame.LayoutOrder = 3
 promptInputFrame.Parent = promptPanel
 
-local promptBox = Instance.new("TextBox")
+promptBox = Instance.new("TextBox")
 promptBox.PlaceholderText = "Describe your game or feature..."
 promptBox.Text = ""
 promptBox.Size = UDim2.new(1, -150, 1, 0)
@@ -1262,7 +1269,6 @@ secondaryLayout.FillDirection = Enum.FillDirection.Horizontal
 secondaryLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 secondaryLayout.SortOrder = Enum.SortOrder.LayoutOrder
 secondaryLayout.Padding = UDim.new(0, 8)
-secondaryLayout.HorizontalFlex = Enum.UIFlexAlignment.Fill
 secondaryLayout.Parent = secondaryRow
 
 generateBtn.Parent = actionsPanel
@@ -1270,30 +1276,30 @@ generateBtn.Parent = actionsPanel
 -- Secondary agent actions row
 local addFeatureBtn = Instance.new("TextButton")
 addFeatureBtn.Text = "+ Add Feature"
-addFeatureBtn.Size = UDim2.new(0, 0, 0, 36)
+addFeatureBtn.Size = UDim2.new(0.333, -6, 0, 36)
 addFeatureBtn.Position = UDim2.new(0, 0, 0, 0)
 addFeatureBtn.LayoutOrder = 1
-styleButton(addFeatureBtn, THEME.Panel)
+styleButton(addFeatureBtn, Color3.fromRGB(33, 40, 64))
 addFeatureBtn.TextSize = 13
 addFeatureBtn.TextColor3 = THEME.Text
 addFeatureBtn.Parent = secondaryRow
 
 local fixBugsBtn = Instance.new("TextButton")
 fixBugsBtn.Text = "Fix Bugs"
-fixBugsBtn.Size = UDim2.new(0, 0, 0, 36)
+fixBugsBtn.Size = UDim2.new(0.333, -6, 0, 36)
 fixBugsBtn.Position = UDim2.new(0, 0, 0, 0)
 fixBugsBtn.LayoutOrder = 2
-styleButton(fixBugsBtn, THEME.Panel)
+styleButton(fixBugsBtn, Color3.fromRGB(33, 40, 64))
 fixBugsBtn.TextSize = 13
 fixBugsBtn.TextColor3 = THEME.Text
 fixBugsBtn.Parent = secondaryRow
 
 local optimizeBtn = Instance.new("TextButton")
 optimizeBtn.Text = "Optimize"
-optimizeBtn.Size = UDim2.new(0, 0, 0, 36)
+optimizeBtn.Size = UDim2.new(0.333, -6, 0, 36)
 optimizeBtn.Position = UDim2.new(0, 0, 0, 0)
 optimizeBtn.LayoutOrder = 3
-styleButton(optimizeBtn, THEME.Panel)
+styleButton(optimizeBtn, Color3.fromRGB(33, 40, 64))
 optimizeBtn.TextSize = 13
 optimizeBtn.TextColor3 = THEME.Text
 optimizeBtn.Parent = secondaryRow
@@ -2655,13 +2661,17 @@ local function resolveServiceParent(parentKey)
 	return nil
 end
 
-local function applyStructuredBuild(build)
+local function applyStructuredBuild(build, recordHistory)
 	if type(build) ~= "table" or type(build.instances) ~= "table" then
 		return false, "Invalid build payload"
 	end
 
+	if recordHistory == nil then
+		recordHistory = true
+	end
+
 	-- Track history for Undo/Redo
-	if lastStructuredBuild then
+	if recordHistory and lastStructuredBuild then
 		table.insert(undoStack, lastStructuredBuild)
 		redoStack = {}
 	end
@@ -2767,7 +2777,7 @@ undoBtn.MouseButton1Click:Connect(function()
 	if not lastStructuredBuild then return end
 	local prev = table.remove(undoStack)
 	table.insert(redoStack, lastStructuredBuild)
-	local ok, msg = applyStructuredBuild(prev)
+	local ok, msg = applyStructuredBuild(prev, false)
 	if ok then
 		lastStructuredBuild = prev
 		setLog("Undone. " .. msg)
@@ -2783,7 +2793,7 @@ redoBtn.MouseButton1Click:Connect(function()
 	if not lastStructuredBuild then return end
 	local nextBuild = table.remove(redoStack)
 	table.insert(undoStack, lastStructuredBuild)
-	local ok, msg = applyStructuredBuild(nextBuild)
+	local ok, msg = applyStructuredBuild(nextBuild, false)
 	if ok then
 		lastStructuredBuild = nextBuild
 		setLog("Redone. " .. msg)
