@@ -307,7 +307,7 @@ brandUnitLayout.FillDirection = Enum.FillDirection.Horizontal
 brandUnitLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 brandUnitLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 brandUnitLayout.SortOrder = Enum.SortOrder.LayoutOrder
-brandUnitLayout.Padding = UDim.new(0, 10)
+brandUnitLayout.Padding = UDim.new(0, 0)
 brandUnitLayout.Parent = brandUnit
 
 local brandTile = Instance.new("Frame")
@@ -318,6 +318,9 @@ brandTile.Size = UDim2.new(0, 40, 0, 40)
 brandTile.LayoutOrder = 1
 brandTile.Parent = brandUnit
 brandTile.Active = true
+-- User requested: remove circular V logo (keep "V" in wordmark instead).
+brandTile.Visible = false
+brandTile.Size = UDim2.new(0, 0, 0, 0)
 
 local brandTileCorner = Instance.new("UICorner")
 brandTileCorner.CornerRadius = UDim.new(1, 0)
@@ -467,7 +470,7 @@ brandV.ZIndex = 13
 local titleStack = Instance.new("Frame")
 titleStack.Name = "TitleStack"
 titleStack.BackgroundTransparency = 1
-titleStack.Size = UDim2.new(1, -50, 1, 0)
+titleStack.Size = UDim2.new(1, 0, 1, 0)
 titleStack.LayoutOrder = 2
 titleStack.ZIndex = 11
 titleStack.Parent = brandUnit
@@ -480,8 +483,7 @@ titleStackLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 titleStackLayout.Parent = titleStack
 
 local title = Instance.new("TextLabel")
--- Branding: V logo (left tile) + "ibeCoder" reads as one word "VibeCoder"
-title.Text = "ibeCoder"
+title.Text = "VibeCoder"
 title.Size = UDim2.new(1, 0, 0, 22)
 title.BackgroundTransparency = 1
 title.TextColor3 = THEME.Text
@@ -522,26 +524,16 @@ headerRight.LayoutOrder = 3
 headerRight.Parent = headerContent
 
 -- Subtle hover polish (purely visual).
-brandTile.MouseEnter:Connect(function()
-	brandTileScale.Scale = 1.03
-	brandTileStroke.Transparency = 0.18
-end)
-brandTile.MouseLeave:Connect(function()
-	brandTileScale.Scale = 1
-	brandTileStroke.Transparency = 0.25
-end)
+-- (logo hidden)
 
 -- Responsive: slightly tighten spacing and type on narrow widths.
 local function applyBrandResponsive()
 	local w = headerPanel.AbsoluteSize.X
 	local compact = w > 0 and w < 620
-	brandUnitLayout.Padding = UDim.new(0, compact and 8 or 10)
+	brandUnitLayout.Padding = UDim.new(0, 0)
 	title.TextSize = compact and 19 or 21
 	subtitle.TextSize = compact and 11 or 12
-	brandTile.Size = UDim2.new(0, compact and 36 or 40, 0, compact and 36 or 40)
-	brandBadge.Size = UDim2.new(0, compact and 28 or 32, 0, compact and 28 or 32)
-	brandV.TextSize = compact and 16 or 18
-	titleStack.Size = UDim2.new(1, -((compact and 36 or 40) + (compact and 8 or 10)), 1, 0)
+	titleStack.Size = UDim2.new(1, 0, 1, 0)
 end
 applyBrandResponsive()
 headerPanel:GetPropertyChangedSignal("AbsoluteSize"):Connect(applyBrandResponsive)
