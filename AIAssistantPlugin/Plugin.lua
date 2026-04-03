@@ -3118,6 +3118,13 @@ enhancePromptBtn.MouseButton1Click:Connect(function()
 
 	promptBox.Text = enhanced
 	promptBox.PlaceholderText = "Describe your game or feature..."
+	-- Make the update visible: jump to the end so appended content is in view.
+	pcall(function()
+		promptBox:CaptureFocus()
+		promptBox.CursorPosition = #promptBox.Text + 1
+		promptBox.SelectionStart = #promptBox.Text + 1
+		promptBox:ReleaseFocus()
+	end)
 	appendConsoleLine("Prompt enhanced. Ready to Generate.", { typewriter = true, speedSecondsPerChar = 0.001 })
 	if cancelToken ~= myToken then
 		return
