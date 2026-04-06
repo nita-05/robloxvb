@@ -1144,6 +1144,43 @@ async function withRetries(fn, attempts = 2) {
     throw lastErr;
 }
 
+/** @param {import("express").Request} req */
+function normalizeQualityMode(req) {
+    const t = String(req.body.modelTier || req.body.mode || "balanced").toLowerCase();
+    if (t === "fast") return "fast";
+    if (t === "smart") return "smart";
+    if (t === "auto") return "balanced";
+    return "balanced";
+}
+
+/** Sync heuristic (runs in parallel with fast model — no extra latency to start generation). */
+function promptComplexityScore(prompt) {
+    const p = String(prompt || "");
+    const len = p.length;
+    let score = 0;
+    if (len > 1400) score += 4;
+    else if (len > 700) score += 3;
+    else if (len > 350) score += 2;
+    else if (len > 120) score += 1;
+    if (/inventory|multiplayer|pvp|combat|quest|dialogue|economy|shop|saving|datastore|pathfinding|boss|wave|tower|simulator|tycoon|ragdoll/i.test(p)) {
+        score += 3;
+    }
+    if (/ui|gui|npc|enemy|weapon|level|checkpoint|round|obby|tycoon/i.test(p)) score += 1;
+    return Math.min(10, score);
+}
+
+/** @param {"fast"|"balanced"|"smart"} mode */
+function shouldUpgradeAfterFast(score, mode) {
+    if (mode === "fast") return false;
+    if (mode === "balanced") return score >= 4;
+    if (mode === "smart") return score >= 2;
+    return false;
+}
+
+/** @param {"balanced"|"smart"} mode */
+function upgradeChatModelForMode(mode) {
+    return mode === "smart" ? models.SMART_CHAT : models.BALANCED_CHAT;
+}
 
 // 🧠 INTENT DETECTOR
 function detectIntent(prompt) {
@@ -1461,17 +1498,7 @@ app.post("/ai", async (req, res) => {
 app.post("/plan", async (req, res) => {
     const prompt = req.body.prompt;
     const fast = req.body.fast !== false;
-    const modelTier = String(req.body.modelTier || "").toLowerCase();
-    const tier = modelTier == "fast" || modelTier == "balanced" || modelTier == "smart"
-        ? modelTier
-        : fast
-            ? "fast"
-            : "balanced";
-
-    const plannerModel =
-        tier == "fast" ? models.FAST_PLANNER :
-            tier == "balanced" ? models.BALANCED_PLANNER :
-                models.SMART_PLANNER;
+    const plannerModel = models.PLANNER;
 
     // Speed-first mode: return immediate local plan.
     if (fast) {
@@ -1505,47 +1532,59 @@ app.post("/plan", async (req, res) => {
 app.post("/enhance-prompt", async (req, res) => {
     const prompt = String(req.body.prompt || "").trim();
     const template = String(req.body.template || "None").trim();
-    const modelTier = String(req.body.modelTier || "").toLowerCase();
-    const tier = modelTier == "fast" || modelTier == "balanced" || modelTier == "smart"
-        ? modelTier
-        : "balanced";
+    const mode = normalizeQualityMode(req);
 
     if (!prompt) {
         return res.status(400).json({ success: false, error: "missing_prompt" });
     }
 
-    const chatModel =
-        tier == "fast" ? models.FAST_CHAT :
-            tier == "balanced" ? models.BALANCED_CHAT :
-                models.SMART_CHAT;
-
     if (!openai) {
-        return res.json({ prompt: enhancePromptLocal(prompt, template) });
+        return res.json({ prompt: enhancePromptLocal(prompt, template), modelUpgraded: false });
     }
 
-    const completion = await openai.chat.completions.create({
-        model: chatModel,
-        messages: [
-            {
-                role: "system",
-                content:
-                    "You rewrite Roblox game requests into a clear, Roblox-Studio-friendly build prompt.\n" +
-                    "Output ONLY the improved prompt text (no markdown fences, no extra commentary).\n" +
-                    "Make it concise but specific, using short sections and bullet-like lines.\n" +
-                    "Include: Goal, Core loop, Key mechanics, UI, Win/Fail conditions, Constraints.\n" +
-                    "Constraints: safe for Studio plugin execution; avoid copyrighted assets; avoid audio asset IDs; keep scope to an MVP.",
-            },
-            {
-                role: "user",
-                content:
-                    `Template: ${template}\n` +
-                    `Original prompt:\n${prompt}`,
-            },
-        ],
-    });
+    const systemContent =
+        "You rewrite Roblox game requests into a clear, Roblox-Studio-friendly build prompt.\n" +
+        "Output ONLY the improved prompt text (no markdown fences, no extra commentary).\n" +
+        "Make it concise but specific, using short sections and bullet-like lines.\n" +
+        "Include: Goal, Core loop, Key mechanics, UI, Win/Fail conditions, Constraints.\n" +
+        "Constraints: safe for Studio plugin execution; avoid copyrighted assets; avoid audio asset IDs; keep scope to an MVP.";
+    const userContent = `Template: ${template}\nOriginal prompt:\n${prompt}`;
 
-    const enhancedPrompt = String(completion.choices?.[0]?.message?.content || "").trim();
-    return res.json({ prompt: enhancedPrompt || enhancePromptLocal(prompt, template) });
+    const messages = [
+        { role: "system", content: systemContent },
+        { role: "user", content: userContent },
+    ];
+
+    const [fastCompletion, complexityScore] = await Promise.all([
+        openai.chat.completions.create({
+            model: models.FAST_CHAT,
+            messages,
+        }),
+        Promise.resolve(promptComplexityScore(prompt)),
+    ]);
+
+    let enhancedPrompt = String(fastCompletion.choices?.[0]?.message?.content || "").trim();
+    let modelUpgraded = false;
+
+    if (mode !== "fast" && shouldUpgradeAfterFast(complexityScore, mode)) {
+        try {
+            const upgradeModel = upgradeChatModelForMode(mode === "smart" ? "smart" : "balanced");
+            const upgraded = await openai.chat.completions.create({
+                model: upgradeModel,
+                messages,
+            });
+            const t2 = String(upgraded.choices?.[0]?.message?.content || "").trim();
+            if (t2) {
+                enhancedPrompt = t2;
+                modelUpgraded = true;
+            }
+        } catch (e) {
+            console.warn("[enhance-prompt] upgrade pass failed, using fast output", e?.message || e);
+        }
+    }
+
+    const finalPrompt = enhancedPrompt || enhancePromptLocal(prompt, template);
+    return res.json({ prompt: finalPrompt, modelUpgraded });
 });
 
 // Compatibility routes expected by the Studio plugin (avoid 404s).
@@ -1618,23 +1657,19 @@ app.post("/ai-final", async (req, res) => {
     const preferTemplate = req.body.preferTemplate !== false;
     const attempts = Number(req.body.attempts || 2);
 
-    const modelTier = String(req.body.modelTier || "").toLowerCase();
-    const tier =
-        modelTier == "fast" || modelTier == "balanced" || modelTier == "smart"
-            ? modelTier
-            : fast
-                ? "fast"
-                : "balanced";
-
+    const qualityMode = normalizeQualityMode(req);
     const chatModel =
-        tier == "fast" ? models.FAST_CHAT :
-            tier == "balanced" ? models.BALANCED_CHAT :
-                models.SMART_CHAT;
-
+        qualityMode === "fast"
+            ? models.FAST_CHAT
+            : qualityMode === "smart"
+                ? models.SMART_CHAT
+                : models.BALANCED_CHAT;
     const plannerModel =
-        tier == "fast" ? models.FAST_PLANNER :
-            tier == "balanced" ? models.BALANCED_PLANNER :
-                models.SMART_PLANNER;
+        qualityMode === "fast"
+            ? models.FAST_PLANNER
+            : qualityMode === "smart"
+                ? models.SMART_PLANNER
+                : models.BALANCED_PLANNER;
 
     const types = detectGameTypes(prompt);
 
@@ -1651,7 +1686,8 @@ app.post("/ai-final", async (req, res) => {
                 return res.json({
                     mode: "structured-template",
                     message: out.message,
-                    build: out.build
+                    build: out.build,
+                    modelUpgraded: false,
                 });
             }
         }
@@ -1681,46 +1717,105 @@ app.post("/ai-final", async (req, res) => {
                 )
                 : prompt;
 
-        const aiRes = await withRetries(
-            () => openai.chat.completions.create({
-                model: chatModel,
-                messages: [
-                    {
-                        role: "system",
-                        content:
-                            "You output ONLY valid JSON. No markdown. No explanations.\n" +
-                            "Return an object with:\n" +
-                            "- message: short string\n" +
-                            "- build: { version: 1, rootFolderName: 'AI_Build', instances: [...] }\n" +
-                            "instances is a flat list. Each instance has:\n" +
-                            "- id (string, unique)\n" +
-                            "- className (e.g. Folder, Model, Part, MeshPart, SpawnLocation, ScreenGui, TextLabel, TextButton, BillboardGui, PointLight, Script, LocalScript, ModuleScript)\n" +
-                            "- name (optional string)\n" +
-                            "- parent (string id, or one of: 'workspace', 'ServerScriptService', 'StarterGui')\n" +
-                            "- properties (object of simple values; use arrays for vectors: [x,y,z] and colors: [r,g,b])\n" +
-                            "- source (only for Script/LocalScript/ModuleScript)\n" +
-                            "Safety rules:\n" +
-                            "- Do NOT reference or require existing assets (no rbxassetid sounds).\n" +
-                            "- Prefer creating everything under rootFolderName in workspace.\n" +
-                            "- If you create UI, put it under StarterGui.\n" +
-                            "- If you create server scripts, put under ServerScriptService.\n" +
-                            "- Keep IDs stable when refining so objects update predictably.\n" +
-                            "Example schema:\n" +
-                            JSON.stringify(schemaHint)
-                    },
-                    { role: "user", content: userContent }
-                ]
-            }),
-            attempts
-        );
+        const systemContent =
+            "You output ONLY valid JSON. No markdown. No explanations.\n" +
+            "Return an object with:\n" +
+            "- message: short string\n" +
+            "- build: { version: 1, rootFolderName: 'AI_Build', instances: [...] }\n" +
+            "instances is a flat list. Each instance has:\n" +
+            "- id (string, unique)\n" +
+            "- className (e.g. Folder, Model, Part, MeshPart, SpawnLocation, ScreenGui, TextLabel, TextButton, BillboardGui, PointLight, Script, LocalScript, ModuleScript)\n" +
+            "- name (optional string)\n" +
+            "- parent (string id, or one of: 'workspace', 'ServerScriptService', 'StarterGui')\n" +
+            "- properties (object of simple values; use arrays for vectors: [x,y,z] and colors: [r,g,b])\n" +
+            "- source (only for Script/LocalScript/ModuleScript)\n" +
+            "Safety rules:\n" +
+            "- Do NOT reference or require existing assets (no rbxassetid sounds).\n" +
+            "- Prefer creating everything under rootFolderName in workspace.\n" +
+            "- If you create UI, put it under StarterGui.\n" +
+            "- If you create server scripts, put under ServerScriptService.\n" +
+            "- Keep IDs stable when refining so objects update predictably.\n" +
+            "Example schema:\n" +
+            JSON.stringify(schemaHint);
 
-        const raw = String(aiRes.choices?.[0]?.message?.content || "").trim();
-        const parsed = safeJsonParse(raw);
+        const messages = [
+            { role: "system", content: systemContent },
+            { role: "user", content: userContent },
+        ];
+
+        if (!openai) {
+            return res.json({
+                mode: "structured-error",
+                message: "⚠️ Structured mode unavailable.",
+                structuredError: "OpenAI not configured",
+            });
+        }
+
+        const mode = qualityMode;
+        const [fastAiRes, complexityScore] = await Promise.all([
+            withRetries(
+                () =>
+                    openai.chat.completions.create({
+                        model: models.FAST_CHAT,
+                        messages,
+                    }),
+                attempts
+            ),
+            Promise.resolve(promptComplexityScore(prompt)),
+        ]);
+
+        let raw = String(fastAiRes.choices?.[0]?.message?.content || "").trim();
+        let parsed = safeJsonParse(raw);
+        let modelUpgraded = false;
+
+        if (mode !== "fast" && openai && shouldUpgradeAfterFast(complexityScore, mode)) {
+            try {
+                const upgradeModel = upgradeChatModelForMode(mode === "smart" ? "smart" : "balanced");
+                const upgraded = await withRetries(
+                    () =>
+                        openai.chat.completions.create({
+                            model: upgradeModel,
+                            messages,
+                        }),
+                    attempts
+                );
+                const raw2 = String(upgraded.choices?.[0]?.message?.content || "").trim();
+                const p2 = safeJsonParse(raw2);
+                if (p2.ok) {
+                    const vUp = validateStructuredBuild(p2.value.build);
+                    if (vUp.ok) {
+                        parsed = p2;
+                        raw = raw2;
+                        modelUpgraded = true;
+                    }
+                }
+            } catch (e) {
+                console.warn("[ai-final] structured upgrade failed, using fast output", e?.message || e);
+            }
+        }
+
+        if (!parsed.ok && mode !== "fast" && openai) {
+            try {
+                const recovered = await withRetries(
+                    () =>
+                        openai.chat.completions.create({
+                            model: models.BALANCED_CHAT,
+                            messages,
+                        }),
+                    attempts
+                );
+                const rawR = String(recovered.choices?.[0]?.message?.content || "").trim();
+                parsed = safeJsonParse(rawR);
+            } catch (e) {
+                console.warn("[ai-final] structured recovery failed", e?.message || e);
+            }
+        }
+
         if (!parsed.ok) {
             return res.json({
                 mode: "structured-error",
                 message: "⚠️ Structured mode: invalid JSON.",
-                structuredError: "Invalid JSON from model"
+                structuredError: "Invalid JSON from model",
             });
         }
 
@@ -1730,14 +1825,15 @@ app.post("/ai-final", async (req, res) => {
             return res.json({
                 mode: "structured-error",
                 message: "⚠️ Structured mode: invalid build schema.",
-                structuredError: v.error
+                structuredError: v.error,
             });
         }
 
         return res.json({
             mode: "structured",
             message: out.message || "✅ Structured build ready",
-            build: out.build
+            build: out.build,
+            modelUpgraded,
         });
     }
 
