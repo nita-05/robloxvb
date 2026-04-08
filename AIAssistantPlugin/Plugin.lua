@@ -56,8 +56,7 @@ local selectedTemplate = "None" -- "None" | "Obby Game" | "Simulator" | "Tycoon"
 -- Simple usage feedback (UI-only until real pricing is implemented).
 local credits = 100
 
--- Quality mode: Fast / Balanced / Smart (default Fast = fewest model calls, closest to “snappy” UX)
-local selectedModelPreset = "fast" -- "fast" | "balanced" | "smart"
+-- Backend uses one default model (gpt-5.3-latest in config/models.js). Tier stays "fast" to skip extra upgrade calls.
 
 -- Client-side memory (UI-level). We store prompt + compact script info.
 local memoryEntries = {}
@@ -570,7 +569,7 @@ headerFill.Size = UDim2.new(0, 0, 1, 0)
 headerFill.LayoutOrder = 2
 headerFill.Parent = headerContent
 
--- Top-right: quality mode
+-- Top-right: credits / header extras
 local headerRight = Instance.new("Frame")
 headerRight.Name = "HeaderRight"
 headerRight.BackgroundTransparency = 1
@@ -1569,115 +1568,23 @@ actionsLayout.Parent = actionsPanel
 
 addSectionLabel(actionsPanel, "Actions").LayoutOrder = 1
 
--- Quality mode toggle (Fast / Balanced / Smart)
-local modeRow = Instance.new("Frame")
-modeRow.Name = "ModeRow"
-modeRow.BackgroundTransparency = 1
-modeRow.Size = UDim2.new(1, 0, 0, 28)
-modeRow.LayoutOrder = 2
-modeRow.Parent = actionsPanel
+-- Single model (configured on server: gpt-5.3-latest by default)
+local modelHintRow = Instance.new("Frame")
+modelHintRow.Name = "ModelHintRow"
+modelHintRow.BackgroundTransparency = 1
+modelHintRow.Size = UDim2.new(1, 0, 0, 22)
+modelHintRow.LayoutOrder = 2
+modelHintRow.Parent = actionsPanel
 
-local modeStrip = Instance.new("Frame")
-modeStrip.Name = "ModeStrip"
-modeStrip.BackgroundColor3 = THEME.Surface
-modeStrip.BorderSizePixel = 0
-modeStrip.Size = UDim2.new(1, 0, 1, 0)
-modeStrip.Parent = modeRow
-
-local modeStripCorner = Instance.new("UICorner")
-modeStripCorner.CornerRadius = UDim.new(0, 10)
-modeStripCorner.Parent = modeStrip
-
-local modeStripStroke = Instance.new("UIStroke")
-modeStripStroke.Color = THEME.Border
-modeStripStroke.Transparency = 0.55
-modeStripStroke.Thickness = 1
-modeStripStroke.Parent = modeStrip
-
-local modeStripPad = Instance.new("UIPadding")
-modeStripPad.PaddingLeft = UDim.new(0, 4)
-modeStripPad.PaddingRight = UDim.new(0, 4)
-modeStripPad.PaddingTop = UDim.new(0, 2)
-modeStripPad.PaddingBottom = UDim.new(0, 2)
-modeStripPad.Parent = modeStrip
-
-local modeStripLayout = Instance.new("UIListLayout")
-modeStripLayout.FillDirection = Enum.FillDirection.Horizontal
-modeStripLayout.Padding = UDim.new(0, 2)
-modeStripLayout.SortOrder = Enum.SortOrder.LayoutOrder
-modeStripLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-modeStripLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-modeStripLayout.Parent = modeStrip
-
-local function buildModeChip(text, key)
-	local btn = Instance.new("TextButton")
-	btn.AutoButtonColor = false
-	btn.Text = text
-	btn.Font = Enum.Font.GothamSemibold
-	btn.TextSize = 10
-	btn.TextColor3 = THEME.Text
-	btn.BorderSizePixel = 0
-	btn.Size = UDim2.new(0.333, -2, 0, 22)
-	btn.BackgroundColor3 = Color3.fromRGB(36, 40, 52)
-	btn:SetAttribute("ModeKey", key)
-
-	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(0, 8)
-	c.Parent = btn
-
-	local s = Instance.new("UIStroke")
-	s.Color = THEME.Border
-	s.Thickness = 1
-	s.Transparency = 0.65
-	s.Parent = btn
-
-	btn.MouseEnter:Connect(function()
-		if btn.Active then
-			TweenService:Create(s, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Transparency = 0.35 }):Play()
-		end
-	end)
-	btn.MouseLeave:Connect(function()
-		TweenService:Create(s, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Transparency = 0.65 }):Play()
-	end)
-
-	return btn
-end
-
-local modeBtnFast = buildModeChip("⚡ Fast", "fast")
-modeBtnFast.LayoutOrder = 1
-modeBtnFast.Parent = modeStrip
-
-local modeBtnBalanced = buildModeChip("⚖️ Balanced", "balanced")
-modeBtnBalanced.LayoutOrder = 2
-modeBtnBalanced.Parent = modeStrip
-
-local modeBtnSmart = buildModeChip("🧠 Smart", "smart")
-modeBtnSmart.LayoutOrder = 3
-modeBtnSmart.Parent = modeStrip
-
-local function syncModeStrip()
-	local function setOn(btn, on)
-		btn.BackgroundColor3 = on and THEME.AccentBlue or Color3.fromRGB(36, 40, 52)
-		btn.TextTransparency = on and 0 or 0.12
-	end
-	setOn(modeBtnFast, selectedModelPreset == "fast")
-	setOn(modeBtnBalanced, selectedModelPreset == "balanced")
-	setOn(modeBtnSmart, selectedModelPreset == "smart")
-end
-
-modeBtnFast.MouseButton1Click:Connect(function()
-	selectedModelPreset = "fast"
-	syncModeStrip()
-end)
-modeBtnBalanced.MouseButton1Click:Connect(function()
-	selectedModelPreset = "balanced"
-	syncModeStrip()
-end)
-modeBtnSmart.MouseButton1Click:Connect(function()
-	selectedModelPreset = "smart"
-	syncModeStrip()
-end)
-syncModeStrip()
+local modelHintLabel = Instance.new("TextLabel")
+modelHintLabel.BackgroundTransparency = 1
+modelHintLabel.Size = UDim2.new(1, 0, 1, 0)
+modelHintLabel.Font = Enum.Font.GothamMedium
+modelHintLabel.TextSize = 10
+modelHintLabel.TextColor3 = THEME.Muted
+modelHintLabel.TextXAlignment = Enum.TextXAlignment.Center
+modelHintLabel.Text = "🤖 AI model: GPT-5.3 latest (one model — fast path)"
+modelHintLabel.Parent = modelHintRow
 
 generateBtn = Instance.new("TextButton")
 -- Use a dedicated label so the text stays crisp over gradients/glows.
@@ -2580,14 +2487,9 @@ local function saveMemoryFromStructuredBuild(promptText, build)
 	end
 end
 
+-- Always "fast" so structured /ai-final does not run a second "upgrade" OpenAI pass.
 local function modelTierForApi()
-	if selectedModelPreset == "fast" then
-		return "fast"
-	end
-	if selectedModelPreset == "smart" then
-		return "smart"
-	end
-	return "balanced"
+	return "fast"
 end
 
 -- Backend sets modelUpgraded when the second (stronger) model pass replaced the fast output.
