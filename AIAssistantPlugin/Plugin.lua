@@ -2853,6 +2853,30 @@ local function requestWithTimeout(url, body, timeoutSeconds)
 	return resultData, resultErr
 end
 
+-- Render free tier can sleep; wake it before heavy requests so the user doesn't hit timeouts.
+local lastRenderWarmAt = 0
+local function warmRenderIfNeeded(requestToken)
+	requestToken = requestToken or cancelToken
+	local base = tostring(getApiBase() or "")
+	if not string.find(string.lower(base), "onrender.com", 1, true) then
+		return
+	end
+
+	local now = os.clock()
+	if (now - lastRenderWarmAt) < 120 then
+		return
+	end
+
+	lastRenderWarmAt = now
+	pcall(function()
+		HttpService:RequestAsync({
+			Url = base .. "/health",
+			Method = "GET",
+			Headers = BACKEND_API_KEY ~= "" and { ["x-api-key"] = BACKEND_API_KEY } or {},
+		})
+	end)
+end
+
 stopBtn.MouseButton1Click:Connect(function()
 	if not isBusy then
 		return
@@ -3462,6 +3486,7 @@ local function autoImportToolboxEnvironmentAssets(gamePromptText, requestToken)
 	-- The backend turns this into Toolbox search keyword phrases and returns matching asset IDs.
 	local envPrompt = tostring(gamePromptText or "") .. "\n\nEnvironment focus: choose the best scenery/set-dressing props for this game (terrain/landscaping, decor, walls/structures, lighting, atmosphere)."
 
+	warmRenderIfNeeded(requestToken)
 	local data, err = requestWithTimeout(getApiBase() .. "/generate-assets", {
 		prompt = envPrompt,
 		style = assetStyle,
@@ -3549,6 +3574,7 @@ local function runAgentRefine(instructionText, agentLabel)
 
 	local refinedPrompt = augmentPromptForAI(lastPrompt)
 	local stopLoader = startConsoleLoader("🔧 Processing your Roblox system", myToken)
+	warmRenderIfNeeded(myToken)
 	local data, err = requestWithTimeout(getApiBase() .. "/ai-final", {
 		prompt = refinedPrompt,
 		structured = true,
@@ -3594,10 +3620,10 @@ local function runAgentRefine(instructionText, agentLabel)
 			saveMemoryFromStructuredBuild(lastPrompt, data.build)
 			appendConsoleLine("Done. " .. msg, { typewriter = true, speedSecondsPerChar = 0.001 })
 			appendConsoleLine("Updating environment and importing toolbox assets...", { typewriter = false })
-			if cancelToken ~= myToken then
-				return
-			end
-			autoImportToolboxEnvironmentAssets(lastPrompt .. "\n\nAgent action: " .. tostring(agentLabel) .. "\n" .. instructionText, myToken)
+			-- Do not block the UI on asset import; run in background.
+			task.spawn(function()
+				autoImportToolboxEnvironmentAssets(lastPrompt .. "\n\nAgent action: " .. tostring(agentLabel) .. "\n" .. instructionText, myToken)
+			end)
 		else
 			appendConsoleLine("Structured build failed: " .. tostring(msg), { typewriter = false })
 		end
@@ -3634,12 +3660,13 @@ enhancePromptBtn.MouseButton1Click:Connect(function()
 	appendConsoleLine("🧠 Enhance Prompt — contacting AI...", { streamWords = true, secondsPerWord = 0.007 })
 
 	local stopLoader = startConsoleLoader("🧠 Improving your prompt", myToken)
+	warmRenderIfNeeded(myToken)
 	local data, err = requestWithTimeout(getApiBase() .. "/enhance-prompt", {
 		prompt = promptRaw,
 		template = selectedTemplate,
 		-- Keep Enhance Prompt consistently fast: backend will run a single FAST pass.
 		modelTier = "fast",
-	}, 25)
+	}, 90)
 	stopLoader()
 
 	if cancelToken ~= myToken then
@@ -3786,6 +3813,7 @@ generateBtn.MouseButton1Click:Connect(function()
 	end
 
 	local augmentedPrompt = augmentPromptForAI(promptRaw)
+	warmRenderIfNeeded(myToken)
 	local data, err = requestWithTimeout(getApiBase() .. "/ai-final", {
 		prompt = augmentedPrompt,
 		structured = true,
@@ -3835,12 +3863,10 @@ generateBtn.MouseButton1Click:Connect(function()
 			setQuickChips(buildAutoSuggestionsFromPrompt(promptRaw))
 			appendConsoleLine("Done. " .. msg, { typewriter = true, speedSecondsPerChar = 0.001 })
 			appendConsoleLine("Analyzing environment and importing toolbox assets...", { typewriter = false })
-			if cancelToken ~= myToken then
-				isBusy = false
-				setButtonsEnabled(true)
-				return
-			end
-			autoImportToolboxEnvironmentAssets(promptRaw, myToken)
+			-- Do not block the UI on asset import; run in background.
+			task.spawn(function()
+				autoImportToolboxEnvironmentAssets(promptRaw, myToken)
+			end)
 		else
 			appendConsoleLine("Structured build failed: " .. tostring(msg), { typewriter = false })
 		end
