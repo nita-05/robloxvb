@@ -2413,8 +2413,8 @@ end)()
 local ROOT_FOLDER_NAME = "AI_Build"
 local GENERATED_GAME_NAME = "GeneratedGame"
 
--- Roblox Studio sometimes has trouble resolving "localhost"; 127.0.0.1 is more reliable for local testing.
-local DEFAULT_API_BASE = "http://127.0.0.1:3000"
+-- Production (Render). For local testing use http://127.0.0.1:3000 instead.
+local DEFAULT_API_BASE = "https://robloxvb.onrender.com"
 
 -- If your backend has BACKEND_API_KEY set, paste the same value here so requests succeed.
 -- Leave empty if your backend does not require an API key (local testing only).
