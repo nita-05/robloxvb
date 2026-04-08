@@ -3560,6 +3560,10 @@ local function runAgentRefine(instructionText, agentLabel)
 	stopLoader()
 
 	if cancelToken ~= myToken then
+		-- Ensure UI restores after Stop/Cancel.
+		isBusy = false
+		setButtonsEnabled(true)
+		setActionStatus("⚡ Ready")
 		return
 	end
 	if err then
