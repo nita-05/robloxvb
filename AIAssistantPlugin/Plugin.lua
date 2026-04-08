@@ -22,28 +22,32 @@ end)
 -- UI ROOT
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(1, 0, 1, 0)
-frame.BackgroundColor3 = Color3.fromRGB(22, 24, 30) -- Studio-adjacent dark canvas
+frame.BackgroundColor3 = Color3.fromRGB(12, 14, 20) -- premium dark canvas
 frame.BorderSizePixel = 0
 frame.Parent = widget
 
 local THEME = {
-	Bg = Color3.fromRGB(22, 24, 30),
-	Panel = Color3.fromRGB(28, 31, 40),
-	Card = Color3.fromRGB(30, 33, 42),
-	Surface = Color3.fromRGB(20, 23, 32),
-	Border = Color3.fromRGB(48, 54, 72),
-	Text = Color3.fromRGB(236, 242, 255),
-	Muted = Color3.fromRGB(140, 150, 175),
-	Placeholder = Color3.fromRGB(95, 102, 120),
-	Primary = Color3.fromRGB(34, 211, 238),
-	Primary2 = Color3.fromRGB(59, 130, 246),
+	Bg = Color3.fromRGB(12, 14, 20),
+	Panel = Color3.fromRGB(16, 18, 26),
+	Card = Color3.fromRGB(18, 21, 31),
+	Surface = Color3.fromRGB(14, 16, 24),
+	Border = Color3.fromRGB(38, 44, 62),
+	Text = Color3.fromRGB(238, 243, 255),
+	Muted = Color3.fromRGB(160, 170, 195),
+	Placeholder = Color3.fromRGB(112, 120, 142),
+	Primary = Color3.fromRGB(34, 211, 238), -- cyan
+	Primary2 = Color3.fromRGB(99, 102, 241), -- indigo
 	AccentBlue = Color3.fromRGB(56, 139, 253),
-	Danger = Color3.fromRGB(200, 65, 75),
-	SecondaryBtn = Color3.fromRGB(42, 46, 58),
-	Radius = UDim.new(0, 14),
+	Danger = Color3.fromRGB(232, 84, 102),
+	SecondaryBtn = Color3.fromRGB(26, 29, 40),
+	Radius = UDim.new(0, 16),
 	ButtonRadius = UDim.new(0, 14),
-	PillRadius = UDim.new(0, 14),
+	PillRadius = UDim.new(0, 999),
 }
+
+-- Header logo (upload your PNG to Roblox, then paste the asset id here).
+-- Example: "rbxassetid://1234567890"
+local BRAND_LOGO_IMAGE = "rbxassetid://0"
 
 -- UI/feature state must be defined BEFORE UI widgets reference it.
 -- Memory is always on (automatic context from recent builds).
@@ -59,12 +63,18 @@ local selectedModelPreset = "balanced" -- "fast" | "balanced" | "smart"
 local memoryEntries = {}
 local MAX_MEMORY_ENTRIES = 4
 
+-- Services used by UI tweens MUST be available before UI construction.
+local TweenService = game:GetService("TweenService")
+
 -- Top-level overlay for dropdown popups (prevents clipping in panels/scroll frames)
 local overlay = Instance.new("Frame")
 overlay.Name = "Overlay"
 overlay.BackgroundTransparency = 1
 overlay.Size = UDim2.new(1, 0, 1, 0)
 overlay.ZIndex = 500
+-- Critical: overlay must never block clicks on underlying buttons.
+overlay.Active = false
+overlay.Selectable = false
 overlay.Parent = frame
 
 local function toOverlayPos(guiObj)
@@ -119,16 +129,16 @@ rootScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 rootScroll.Parent = frame
 
 local rootPadding = Instance.new("UIPadding")
-rootPadding.PaddingTop = UDim.new(0, 12)
-rootPadding.PaddingBottom = UDim.new(0, 16)
-rootPadding.PaddingLeft = UDim.new(0, 12)
-rootPadding.PaddingRight = UDim.new(0, 12)
+rootPadding.PaddingTop = UDim.new(0, 14)
+rootPadding.PaddingBottom = UDim.new(0, 18)
+rootPadding.PaddingLeft = UDim.new(0, 14)
+rootPadding.PaddingRight = UDim.new(0, 14)
 rootPadding.Parent = rootScroll
 
 local rootLayout = Instance.new("UIListLayout")
 rootLayout.FillDirection = Enum.FillDirection.Vertical
 rootLayout.SortOrder = Enum.SortOrder.LayoutOrder
-rootLayout.Padding = UDim.new(0, 16)
+rootLayout.Padding = UDim.new(0, 14)
 rootLayout.Parent = rootScroll
 
 local function addPanel(parent, height)
@@ -141,7 +151,7 @@ local function addPanel(parent, height)
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = THEME.Border
 	stroke.Thickness = 1
-	stroke.Transparency = 0.5
+	stroke.Transparency = 0.62
 	stroke.Parent = panel
 
 	local corner = Instance.new("UICorner")
@@ -149,10 +159,10 @@ local function addPanel(parent, height)
 	corner.Parent = panel
 
 	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, 12)
-	padding.PaddingBottom = UDim.new(0, 12)
-	padding.PaddingLeft = UDim.new(0, 12)
-	padding.PaddingRight = UDim.new(0, 12)
+	padding.PaddingTop = UDim.new(0, 14)
+	padding.PaddingBottom = UDim.new(0, 14)
+	padding.PaddingLeft = UDim.new(0, 14)
+	padding.PaddingRight = UDim.new(0, 14)
 	padding.Parent = panel
 
 	panel.Parent = parent
@@ -162,7 +172,7 @@ end
 local function addSectionLabel(parent, text)
 	local row = Instance.new("Frame")
 	row.BackgroundTransparency = 1
-	row.Size = UDim2.new(1, 0, 0, 22)
+	row.Size = UDim2.new(1, 0, 0, 20)
 	row.Parent = parent
 
 	local label = Instance.new("TextLabel")
@@ -170,8 +180,8 @@ local function addSectionLabel(parent, text)
 	label.Size = UDim2.new(1, 0, 1, 0)
 	label.Text = text
 	label.TextColor3 = THEME.Muted
-	label.TextTransparency = 0.05
-	label.Font = Enum.Font.GothamMedium
+	label.TextTransparency = 0.12
+	label.Font = Enum.Font.GothamSemibold
 	label.TextSize = 11
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.TextYAlignment = Enum.TextYAlignment.Bottom
@@ -221,8 +231,8 @@ local function styleButton(btn, baseColor)
 	btn.BackgroundColor3 = baseColor
 	btn.BorderSizePixel = 0
 	btn.TextColor3 = THEME.Text
-	btn.Font = Enum.Font.SourceSansSemibold
-	btn.TextSize = 15
+	btn.Font = Enum.Font.GothamSemibold
+	btn.TextSize = 14
 	btn.TextYAlignment = Enum.TextYAlignment.Center
 
 	local scale = Instance.new("UIScale")
@@ -236,7 +246,7 @@ local function styleButton(btn, baseColor)
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = THEME.Border
 	stroke.Thickness = 1
-	stroke.Transparency = 0.45
+	stroke.Transparency = 0.72
 	stroke.Parent = btn
 
 	btn.MouseButton1Down:Connect(function()
@@ -252,12 +262,12 @@ local function styleButton(btn, baseColor)
 
 	btn.MouseEnter:Connect(function()
 		if btn.Active then
-			TweenService:Create(stroke, TWEEN_HOVER, { Transparency = 0.22 }):Play()
+			TweenService:Create(stroke, TWEEN_HOVER, { Transparency = 0.52 }):Play()
 		end
 	end)
 	btn.MouseLeave:Connect(function()
 		tweenScaleUi(scale, 1)
-		TweenService:Create(stroke, TWEEN_HOVER, { Transparency = 0.45 }):Play()
+		TweenService:Create(stroke, TWEEN_HOVER, { Transparency = 0.72 }):Play()
 	end)
 end
 
@@ -282,15 +292,15 @@ local statusPill
 
 do
 local headerPanel = addPanel(frame, 52)
-headerPanel.Position = UDim2.new(0, 10, 0, 10)
-headerPanel.Size = UDim2.new(1, -20, 0, 52)
+headerPanel.Position = UDim2.new(0, 0, 0, 10)
+headerPanel.Size = UDim2.new(1, 0, 0, 54)
 headerPanel.ZIndex = 10
 
-headerPanel.BackgroundColor3 = Color3.fromRGB(28, 31, 40)
+headerPanel.BackgroundColor3 = THEME.Panel
 local headerGrad = Instance.new("UIGradient")
 headerGrad.Color = ColorSequence.new({
-	ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 26, 46)),
-	ColorSequenceKeypoint.new(1, Color3.fromRGB(13, 16, 30)),
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(18, 22, 34)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 14, 22)),
 })
 headerGrad.Rotation = 90
 headerGrad.Parent = headerPanel
@@ -303,8 +313,8 @@ headerContent.ZIndex = 11
 headerContent.Parent = headerPanel
 
 local headerPadding = Instance.new("UIPadding")
-headerPadding.PaddingTop = UDim.new(0, 8)
-headerPadding.PaddingBottom = UDim.new(0, 8)
+headerPadding.PaddingTop = UDim.new(0, 9)
+headerPadding.PaddingBottom = UDim.new(0, 9)
 headerPadding.PaddingLeft = UDim.new(0, 12)
 headerPadding.PaddingRight = UDim.new(0, 12)
 headerPadding.Parent = headerContent
@@ -332,20 +342,19 @@ brandUnitLayout.FillDirection = Enum.FillDirection.Horizontal
 brandUnitLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 brandUnitLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 brandUnitLayout.SortOrder = Enum.SortOrder.LayoutOrder
-brandUnitLayout.Padding = UDim.new(0, 0)
+brandUnitLayout.Padding = UDim.new(0, 8)
 brandUnitLayout.Parent = brandUnit
 
 local brandTile = Instance.new("Frame")
 brandTile.Name = "BrandTile"
 brandTile.BackgroundColor3 = Color3.fromRGB(10, 16, 34)
 brandTile.BorderSizePixel = 0
-brandTile.Size = UDim2.new(0, 40, 0, 40)
+brandTile.Size = UDim2.new(0, 36, 0, 36)
 brandTile.LayoutOrder = 1
 brandTile.Parent = brandUnit
 brandTile.Active = true
--- User requested: remove circular V logo (keep "V" in wordmark instead).
-brandTile.Visible = false
-brandTile.Size = UDim2.new(0, 0, 0, 0)
+-- Brand icon tile (shown in header).
+brandTile.Visible = true
 
 local brandTileCorner = Instance.new("UICorner")
 brandTileCorner.CornerRadius = UDim.new(1, 0)
@@ -360,6 +369,23 @@ brandTileStroke.Parent = brandTile
 local brandTileScale = Instance.new("UIScale")
 brandTileScale.Scale = 1
 brandTileScale.Parent = brandTile
+
+-- Prefer a real logo image if configured; otherwise fallback to the V badge.
+local brandLogo = Instance.new("ImageLabel")
+brandLogo.Name = "BrandLogo"
+brandLogo.BackgroundTransparency = 1
+brandLogo.BorderSizePixel = 0
+brandLogo.AnchorPoint = Vector2.new(0.5, 0.5)
+brandLogo.Position = UDim2.new(0.5, 0, 0.5, 0)
+brandLogo.Size = UDim2.new(0, 32, 0, 32)
+brandLogo.ZIndex = 20
+brandLogo.ScaleType = Enum.ScaleType.Fit
+brandLogo.ImageTransparency = 0
+brandLogo.Visible = (type(BRAND_LOGO_IMAGE) == "string" and BRAND_LOGO_IMAGE ~= "" and BRAND_LOGO_IMAGE ~= "rbxassetid://0")
+if brandLogo.Visible then
+	brandLogo.Image = BRAND_LOGO_IMAGE
+end
+brandLogo.Parent = brandTile
 
 local brandIcon = Instance.new("TextLabel")
 brandIcon.Name = "BrandIcon"
@@ -459,6 +485,10 @@ brandBadge.Size = UDim2.new(0, 32, 0, 32)
 brandBadge.BackgroundColor3 = Color3.fromRGB(100, 70, 235)
 brandBadge.BorderSizePixel = 0
 brandBadge.Parent = brandTile
+-- If an uploaded logo is configured, hide the V-badge.
+if brandLogo.Visible then
+	brandBadge.Visible = false
+end
 
 local brandBadgeCorner = Instance.new("UICorner")
 brandBadgeCorner.CornerRadius = UDim.new(1, 0)
@@ -513,7 +543,7 @@ title.Size = UDim2.new(1, 0, 0, 22)
 title.BackgroundTransparency = 1
 title.TextColor3 = THEME.Text
 title.Font = Enum.Font.GothamBold
-title.TextSize = 21
+title.TextSize = 19
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.LayoutOrder = 1
 title.ZIndex = 11
@@ -524,9 +554,9 @@ subtitle.Text = "Roblox AI Builder"
 subtitle.Size = UDim2.new(1, 0, 0, 16)
 subtitle.BackgroundTransparency = 1
 subtitle.TextColor3 = THEME.Text
-subtitle.TextTransparency = 0.45
+subtitle.TextTransparency = 0.5
 subtitle.Font = Enum.Font.GothamMedium
-subtitle.TextSize = 12
+subtitle.TextSize = 11
 subtitle.TextXAlignment = Enum.TextXAlignment.Left
 subtitle.LayoutOrder = 2
 subtitle.ZIndex = 11
@@ -556,8 +586,8 @@ local function applyBrandResponsive()
 	local w = headerPanel.AbsoluteSize.X
 	local compact = w > 0 and w < 620
 	brandUnitLayout.Padding = UDim.new(0, 0)
-	title.TextSize = compact and 19 or 21
-	subtitle.TextSize = compact and 11 or 12
+	title.TextSize = compact and 18 or 19
+	subtitle.TextSize = compact and 10 or 11
 	titleStack.Size = UDim2.new(1, 0, 1, 0)
 end
 applyBrandResponsive()
@@ -868,11 +898,13 @@ end
 local promptPanel = addPanel(rootScroll, 0)
 promptPanel.LayoutOrder = 1
 promptPanel.AutomaticSize = Enum.AutomaticSize.Y
+-- Allow Enhance Prompt hover/glow without clipping.
+promptPanel.ClipsDescendants = false
 
 local promptLayout = Instance.new("UIListLayout")
 promptLayout.FillDirection = Enum.FillDirection.Vertical
 promptLayout.SortOrder = Enum.SortOrder.LayoutOrder
-promptLayout.Padding = UDim.new(0, 10)
+promptLayout.Padding = UDim.new(0, 12)
 promptLayout.Parent = promptPanel
 
 addSectionLabel(promptPanel, "Prompt").LayoutOrder = 1
@@ -1052,9 +1084,9 @@ promptCardStroke.Parent = promptCard
 
 local promptInnerPad = Instance.new("UIPadding")
 -- Leave room for quick prompt chips (smart-feel).
-promptInnerPad.PaddingTop = UDim.new(0, 44)
-promptInnerPad.PaddingBottom = UDim.new(0, 12)
-promptInnerPad.PaddingLeft = UDim.new(0, 12)
+promptInnerPad.PaddingTop = UDim.new(0, 14)
+promptInnerPad.PaddingBottom = UDim.new(0, 14)
+promptInnerPad.PaddingLeft = UDim.new(0, 14)
 -- Keep the card’s true bottom-right corner intact (so the Enhance button pins correctly).
 promptInnerPad.PaddingRight = UDim.new(0, 52)
 promptInnerPad.Parent = promptCard
@@ -1074,6 +1106,9 @@ chipsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 chipsLayout.Padding = UDim.new(0, 8)
 chipsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 chipsLayout.Parent = chipsRow
+
+-- Hidden by default; we show auto-suggestions after a successful generation.
+chipsRow.Visible = false
 
 local function makeChip(text)
 	local b = Instance.new("TextButton")
@@ -1128,18 +1163,6 @@ local function makeChip(text)
 	return b
 end
 
-local chipGameSystem = makeChip("🧠 Game System")
-chipGameSystem.LayoutOrder = 1
-chipGameSystem.Parent = chipsRow
-
-local chipCombatSystem = makeChip("⚔️ Combat System")
-chipCombatSystem.LayoutOrder = 2
-chipCombatSystem.Parent = chipsRow
-
-local chipShopSystem = makeChip("🏪 Shop System")
-chipShopSystem.LayoutOrder = 3
-chipShopSystem.Parent = chipsRow
-
 local function applyChipPrompt(text)
 	promptBox.Text = tostring(text or "")
 	promptBox.PlaceholderText = "💡 Describe your game or feature..."
@@ -1151,27 +1174,98 @@ local function applyChipPrompt(text)
 	end)
 end
 
-chipGameSystem.MouseButton1Click:Connect(function()
-	applyChipPrompt(table.concat({
-		"Build a robust core game system framework for a Roblox game.",
-		"Include: player data model (session-only), state management, events, and clean module structure.",
-		"Add: basic UI shell + notifications, and safe server/client boundaries.",
-	}, "\n"))
-end)
-chipCombatSystem.MouseButton1Click:Connect(function()
-	applyChipPrompt(table.concat({
-		"Build a combat system for a Roblox game.",
-		"Include: melee + ranged example, damage/health, hit validation server-side, cooldowns, and basic effects.",
-		"Add: simple HUD (HP) and clean, extensible modules.",
-	}, "\n"))
-end)
-chipShopSystem.MouseButton1Click:Connect(function()
-	applyChipPrompt(table.concat({
-		"Build a shop system for a Roblox game.",
-		"Include: currency (leaderstats/session), item catalog, purchase validation server-side, and a clean shop UI.",
-		"Add: equip/unequip flow and basic feedback (toast/confirmation).",
-	}, "\n"))
-end)
+local function clearQuickChips()
+	for _, child in ipairs(chipsRow:GetChildren()) do
+		if child:IsA("TextButton") then
+			child:Destroy()
+		end
+	end
+end
+
+local function setQuickChips(items)
+	clearQuickChips()
+	if type(items) ~= "table" or #items == 0 then
+		chipsRow.Visible = false
+		return
+	end
+	for i, it in ipairs(items) do
+		if type(it) == "table" and type(it.label) == "string" and type(it.prompt) == "string" then
+			local c = makeChip(it.label)
+			c.LayoutOrder = i
+			c.Parent = chipsRow
+			c.MouseButton1Click:Connect(function()
+				applyChipPrompt(it.prompt)
+			end)
+		end
+	end
+	chipsRow.Visible = true
+end
+
+local function buildAutoSuggestionsFromPrompt(promptText)
+	local p = string.lower(tostring(promptText or ""))
+	local suggestions = {}
+
+	local function add(label, lines)
+		table.insert(suggestions, {
+			label = label,
+			prompt = table.concat(lines, "\n"),
+		})
+	end
+
+	-- Template-ish suggestions (simple heuristics).
+	if string.find(p, "obby", 1, true) then
+		add("🧱 Obby", {
+			"Build a fun Roblox obby with a clear start and finish.",
+			"Include checkpoints every 3-4 stages, a few kill/reset parts, and a win screen.",
+			"Style: dark neon vibe, soft glow lighting, readable UI.",
+		})
+	end
+	if string.find(p, "tycoon", 1, true) then
+		add("🏗️ Tycoon", {
+			"Build a Roblox tycoon with droppers, upgrades, and a purchase UI.",
+			"Include server validation, data model (session), and clean module structure.",
+		})
+	end
+	if string.find(p, "simulator", 1, true) then
+		add("💎 Simulator", {
+			"Build a Roblox simulator loop (collect -> upgrade -> unlock).",
+			"Include simple UI, progression, and clean server/client boundaries.",
+		})
+	end
+	if string.find(p, "combat", 1, true) or string.find(p, "fight", 1, true) then
+		add("⚔️ Combat", {
+			"Build a combat system for a Roblox game.",
+			"Include: melee + ranged example, damage/health, hit validation server-side, cooldowns, and basic effects.",
+			"Add: simple HUD (HP) and clean, extensible modules.",
+		})
+	end
+	if string.find(p, "shop", 1, true) or string.find(p, "store", 1, true) then
+		add("🏪 Shop", {
+			"Build a shop system for a Roblox game.",
+			"Include: currency (leaderstats/session), item catalog, purchase validation server-side, and a clean shop UI.",
+			"Add: equip/unequip flow and basic feedback (toast/confirmation).",
+		})
+	end
+
+	-- Always provide at least a couple useful suggestions after generation.
+	if #suggestions == 0 then
+		add("🧠 Core System", {
+			"Build a robust core game system framework for a Roblox game.",
+			"Include: player data model (session-only), state management, events, and clean module structure.",
+			"Add: basic UI shell + notifications, and safe server/client boundaries.",
+		})
+		add("✨ Polish UI", {
+			"Improve the game's UI/UX.",
+			"Make it readable, consistent, and responsive; add subtle animations and clear feedback.",
+		})
+	end
+
+	-- Cap to keep the row clean.
+	while #suggestions > 4 do
+		table.remove(suggestions)
+	end
+	return suggestions
+end
 
 promptBox = Instance.new("TextBox")
 promptBox.Name = "PromptBox"
@@ -1193,11 +1287,10 @@ promptBox.Parent = promptCard
 
 local promptBoxPad = Instance.new("UIPadding")
 -- Leave space so prompt text doesn't render under the quick chips row.
-promptBoxPad.PaddingTop = UDim.new(0, 32)
+promptBoxPad.PaddingTop = UDim.new(0, 2)
 promptBoxPad.PaddingBottom = UDim.new(0, 2)
-promptBoxPad.PaddingLeft = UDim.new(0, 2)
--- Reserve space for the bottom-right Enhance Prompt button so text never hides under it.
-promptBoxPad.PaddingRight = UDim.new(0, 168)
+promptBoxPad.PaddingLeft = UDim.new(0, 0)
+promptBoxPad.PaddingRight = UDim.new(0, 0)
 promptBoxPad.Parent = promptBox
 
 promptBox.Focused:Connect(function()
@@ -1211,8 +1304,8 @@ promptBox.FocusLost:Connect(function()
 	promptCardStroke.Thickness = 1
 end)
 
--- Lightweight autosuggestions (non-blocking; boosts “smart” feel).
-do
+-- Lightweight autosuggestions popup disabled (user requested removal).
+if false then
 	local suggestPopup = Instance.new("Frame")
 	suggestPopup.Name = "PromptSuggestPopup"
 	suggestPopup.BackgroundColor3 = THEME.Surface
@@ -1340,26 +1433,32 @@ end
 
 enhancePromptBtn = Instance.new("TextButton")
 enhancePromptBtn.Name = "EnhancePromptBtn"
--- Simple, always-visible text button (matches user expectation better than tooltip-only).
+-- Keep the previous pill button look + font, but use Generate-style hover energy.
 enhancePromptBtn.RichText = true
 enhancePromptBtn.Text = '<font color="rgb(255,232,150)">⭐</font><font color="rgb(255,255,255)">  Enhance Prompt</font>'
-enhancePromptBtn.BackgroundColor3 = Color3.fromRGB(62, 70, 96)
-enhancePromptBtn.BorderSizePixel = 0
--- Keep label readable (white); ⭐ is tinted via RichText.
-enhancePromptBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+local enhanceBase = Color3.fromRGB(26, 33, 52)
+styleButton(enhancePromptBtn, enhanceBase)
+enhancePromptBtn.AutoButtonColor = false
+enhancePromptBtn.AnchorPoint = Vector2.new(1, 0.5)
+enhancePromptBtn.Size = UDim2.new(0, 156, 0, 38)
+-- Enhance Prompt lives OUTSIDE the prompt box, aligned bottom-right under it.
+local enhanceRow = Instance.new("Frame")
+enhanceRow.Name = "EnhanceRow"
+enhanceRow.BackgroundTransparency = 1
+enhanceRow.Size = UDim2.new(1, 0, 0, 44)
+enhanceRow.LayoutOrder = 4
+enhanceRow.ZIndex = 30
+enhanceRow.Parent = promptPanel
+
+enhancePromptBtn.Position = UDim2.new(1, 0, 0.5, 0)
+enhancePromptBtn.ZIndex = 31
+enhancePromptBtn.ClipsDescendants = false
 enhancePromptBtn.Font = Enum.Font.GothamSemibold
 enhancePromptBtn.TextSize = 12
-enhancePromptBtn.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+enhancePromptBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 enhancePromptBtn.TextTransparency = 0
--- Disable text outline (prevents the grey halo some Studio themes show).
 enhancePromptBtn.TextStrokeTransparency = 1
-enhancePromptBtn.AutoButtonColor = false
-enhancePromptBtn.AnchorPoint = Vector2.new(1, 1)
-enhancePromptBtn.Size = UDim2.new(0, 156, 0, 38)
--- Keep it pinned to bottom-right inside the prompt card.
-enhancePromptBtn.Position = UDim2.new(1, -12, 1, -12)
-enhancePromptBtn.ZIndex = 12
-enhancePromptBtn.Parent = promptCard
+enhancePromptBtn.Parent = enhanceRow
 
 local enhanceCorner = Instance.new("UICorner")
 enhanceCorner.CornerRadius = THEME.PillRadius
@@ -1368,50 +1467,63 @@ enhanceCorner.Parent = enhancePromptBtn
 do
 	local g = Instance.new("UIGradient")
 	g.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(74, 86, 122)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(44, 50, 70)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(56, 139, 253)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(99, 102, 241)),
 	})
-	g.Rotation = 90
+	g.Rotation = 0
 	g.Parent = enhancePromptBtn
 
-	-- Subtle glow to keep the icon button visible on the prompt card.
+	-- Same hover treatment pattern as Generate (glow fades in/out).
 	local glow = Instance.new("Frame")
 	glow.Name = "Glow"
-	glow.BackgroundColor3 = Color3.fromRGB(255, 232, 150)
-	glow.BackgroundTransparency = 0.9
+	glow.BackgroundColor3 = Color3.fromRGB(110, 195, 255)
+	glow.BackgroundTransparency = 0.86
 	glow.BorderSizePixel = 0
-	glow.Size = UDim2.new(1, 12, 1, 12)
-	glow.Position = UDim2.new(0, -6, 0, -6)
+	glow.Active = false
+	glow.Selectable = false
+	glow.Size = UDim2.new(1, 16, 1, 16)
+	glow.Position = UDim2.new(0, -8, 0, -8)
 	glow.ZIndex = enhancePromptBtn.ZIndex - 1
 	glow.Parent = enhancePromptBtn
 
 	local glowCorner = Instance.new("UICorner")
-	glowCorner.CornerRadius = THEME.PillRadius
+	glowCorner.CornerRadius = THEME.ButtonRadius
 	glowCorner.Parent = glow
 
 	local glowGrad = Instance.new("UIGradient")
 	glowGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 240, 180)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 185, 255)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(160, 235, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 135, 255)),
 	})
 	glowGrad.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.25),
+		NumberSequenceKeypoint.new(0, 0.08),
 		NumberSequenceKeypoint.new(1, 1),
 	})
 	glowGrad.Rotation = 90
 	glowGrad.Parent = glow
+
+	local s = enhancePromptBtn:FindFirstChildOfClass("UIStroke")
+	if s then
+		s.Color = Color3.fromRGB(135, 205, 255)
+		s.Transparency = 0.28
+		s.Thickness = 2
+	end
+
+	enhancePromptBtn.MouseEnter:Connect(function()
+		if enhancePromptBtn.Active then
+			TweenService:Create(glow, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0.78 }):Play()
+			if s then
+				TweenService:Create(s, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Transparency = 0.16 }):Play()
+			end
+		end
+	end)
+	enhancePromptBtn.MouseLeave:Connect(function()
+		TweenService:Create(glow, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0.86 }):Play()
+		if s then
+			TweenService:Create(s, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Transparency = 0.28 }):Play()
+		end
+	end)
 end
-
-local enhanceStroke = Instance.new("UIStroke")
-enhanceStroke.Color = THEME.AccentBlue
-enhanceStroke.Thickness = 1
-enhanceStroke.Transparency = 0.22
-enhanceStroke.Parent = enhancePromptBtn
-
-local enhanceScale = Instance.new("UIScale")
-enhanceScale.Scale = 1
-enhanceScale.Parent = enhancePromptBtn
-enhancePromptBtn:SetAttribute("BaseColor", Color3.fromRGB(62, 70, 96))
 
 enhanceTooltip = Instance.new("TextLabel")
 enhanceTooltip.Name = "EnhanceTooltip"
@@ -1444,31 +1556,6 @@ local enhanceTipPad = Instance.new("UIPadding")
 enhanceTipPad.PaddingLeft = UDim.new(0, 8)
 enhanceTipPad.PaddingRight = UDim.new(0, 8)
 enhanceTipPad.Parent = enhanceTooltip
-
-local TWEEN_ENH = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-enhancePromptBtn.MouseEnter:Connect(function()
-	if enhancePromptBtn.Active then
-		TweenService:Create(enhanceScale, TWEEN_ENH, { Scale = 1.08 }):Play()
-		TweenService:Create(enhanceStroke, TWEEN_ENH, { Transparency = 0.06, Thickness = 1.55 }):Play()
-		enhancePromptBtn.BackgroundColor3 = brighten(Color3.fromRGB(62, 70, 96), 1.12)
-	end
-end)
-enhancePromptBtn.MouseLeave:Connect(function()
-	TweenService:Create(enhanceScale, TWEEN_ENH, { Scale = 1 }):Play()
-	TweenService:Create(enhanceStroke, TWEEN_ENH, { Transparency = 0.35, Thickness = 1 }):Play()
-	local bc = enhancePromptBtn:GetAttribute("BaseColor")
-	if typeof(bc) == "Color3" then
-		enhancePromptBtn.BackgroundColor3 = bc
-	end
-end)
-enhancePromptBtn.MouseButton1Down:Connect(function()
-	if enhancePromptBtn.Active then
-		TweenService:Create(enhanceScale, TweenInfo.new(0.12), { Scale = 0.94 }):Play()
-	end
-end)
-enhancePromptBtn.MouseButton1Up:Connect(function()
-	TweenService:Create(enhanceScale, TWEEN_ENH, { Scale = 1 }):Play()
-end)
 
 actionsPanel = addPanel(rootScroll, 0)
 actionsPanel.LayoutOrder = 2
@@ -1526,7 +1613,7 @@ local function buildModeChip(text, key)
 	local btn = Instance.new("TextButton")
 	btn.AutoButtonColor = false
 	btn.Text = text
-	btn.Font = Enum.Font.GothamMedium
+	btn.Font = Enum.Font.GothamSemibold
 	btn.TextSize = 10
 	btn.TextColor3 = THEME.Text
 	btn.BorderSizePixel = 0
@@ -1607,6 +1694,10 @@ generateLabel.Name = "GenerateLabel"
 generateLabel.BackgroundTransparency = 1
 generateLabel.Size = UDim2.new(1, 0, 1, 0)
 generateLabel.Position = UDim2.new(0, 0, 0, 0)
+-- Ensure the overlay label never intercepts clicks intended for the button.
+generateLabel.Active = false
+generateLabel.Selectable = false
+generateLabel.ClipsDescendants = false
 generateLabel.Text = "Generate"
 generateLabel.Font = Enum.Font.GothamBold
 generateLabel.TextSize = 16
@@ -1633,6 +1724,8 @@ do
 	glow.BackgroundColor3 = Color3.fromRGB(110, 195, 255)
 	glow.BackgroundTransparency = 0.82
 	glow.BorderSizePixel = 0
+	glow.Active = false
+	glow.Selectable = false
 	glow.Size = UDim2.new(1, 16, 1, 16)
 	glow.Position = UDim2.new(0, -8, 0, -8)
 	glow.ZIndex = (generateBtn.ZIndex or 1) - 1
@@ -1677,7 +1770,9 @@ generateBtn.Parent = actionsPanel
 -- Swap-in Stop button (replaces Generate while busy).
 stopBtn = Instance.new("TextButton")
 stopBtn.Name = "StopBtn"
-stopBtn.Text = "Stop"
+stopBtn.AutoButtonColor = false
+-- Use an overlay label for crisper text (matches Generate button treatment).
+stopBtn.Text = ""
 stopBtn.Size = UDim2.new(1, 0, 0, 50)
 stopBtn.Position = UDim2.new(0, 0, 0, 0)
 stopBtn.LayoutOrder = 3
@@ -1686,10 +1781,27 @@ styleButton(stopBtn, stopBase)
 stopBtn.TextSize = 16
 stopBtn.Font = Enum.Font.GothamBold
 stopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-stopBtn.TextTransparency = 0
-stopBtn.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-stopBtn.TextStrokeTransparency = 0.35
+stopBtn.TextTransparency = 1
+stopBtn.TextStrokeTransparency = 1
 stopBtn.ClipsDescendants = false
+
+local stopLabel = Instance.new("TextLabel")
+stopLabel.Name = "StopLabel"
+stopLabel.BackgroundTransparency = 1
+stopLabel.Size = UDim2.new(1, 0, 1, 0)
+stopLabel.Position = UDim2.new(0, 0, 0, 0)
+stopLabel.Active = false
+stopLabel.Selectable = false
+stopLabel.ClipsDescendants = false
+stopLabel.Text = "Stop"
+stopLabel.Font = Enum.Font.GothamBold
+stopLabel.TextSize = 16
+stopLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+stopLabel.TextTransparency = 0
+stopLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+stopLabel.TextStrokeTransparency = 0.12
+stopLabel.ZIndex = (stopBtn.ZIndex or 1) + 1
+stopLabel.Parent = stopBtn
 do
 	local g = Instance.new("UIGradient")
 	g.Color = ColorSequence.new({
@@ -1705,6 +1817,8 @@ do
 	glow.BackgroundColor3 = Color3.fromRGB(255, 120, 145)
 	glow.BackgroundTransparency = 0.86
 	glow.BorderSizePixel = 0
+	glow.Active = false
+	glow.Selectable = false
 	glow.Size = UDim2.new(1, 16, 1, 16)
 	glow.Position = UDim2.new(0, -8, 0, -8)
 	glow.ZIndex = (stopBtn.ZIndex or 1) - 1
@@ -1766,7 +1880,7 @@ addFeatureBtn.Position = UDim2.new(0, 0, 0, 0)
 addFeatureBtn.LayoutOrder = 1
 styleButton(addFeatureBtn, THEME.SecondaryBtn)
 addFeatureBtn.TextSize = 12
-addFeatureBtn.Font = Enum.Font.SourceSansSemibold
+addFeatureBtn.Font = Enum.Font.GothamSemibold
 addFeatureBtn.TextColor3 = THEME.Text
 do
 	local s = addFeatureBtn:FindFirstChildOfClass("UIStroke")
@@ -1784,7 +1898,7 @@ fixBugsBtn.Position = UDim2.new(0, 0, 0, 0)
 fixBugsBtn.LayoutOrder = 2
 styleButton(fixBugsBtn, THEME.SecondaryBtn)
 fixBugsBtn.TextSize = 12
-fixBugsBtn.Font = Enum.Font.SourceSansSemibold
+fixBugsBtn.Font = Enum.Font.GothamSemibold
 fixBugsBtn.TextColor3 = THEME.Text
 do
 	local s = fixBugsBtn:FindFirstChildOfClass("UIStroke")
@@ -1802,7 +1916,7 @@ optimizeBtn.Position = UDim2.new(0, 0, 0, 0)
 optimizeBtn.LayoutOrder = 3
 styleButton(optimizeBtn, THEME.SecondaryBtn)
 optimizeBtn.TextSize = 12
-optimizeBtn.Font = Enum.Font.SourceSansSemibold
+optimizeBtn.Font = Enum.Font.GothamSemibold
 optimizeBtn.TextColor3 = THEME.Text
 do
 	local s = optimizeBtn:FindFirstChildOfClass("UIStroke")
@@ -1828,7 +1942,7 @@ clearBtn.AnchorPoint = Vector2.new(1, 0.5)
 local clearBase = Color3.fromRGB(72, 36, 40)
 styleButton(clearBtn, clearBase)
 clearBtn.TextSize = 12
-clearBtn.Font = Enum.Font.SourceSansSemibold
+clearBtn.Font = Enum.Font.GothamSemibold
 clearBtn.TextColor3 = Color3.fromRGB(255, 220, 220)
 do
 	local s = clearBtn:FindFirstChildOfClass("UIStroke")
@@ -1925,7 +2039,7 @@ planBox.AutomaticSize = Enum.AutomaticSize.Y
 planBox.Parent = planScroll
 
 logScroll = Instance.new("ScrollingFrame")
-logScroll.Size = UDim2.new(1, 0, 0, 300)
+logScroll.Size = UDim2.new(1, 0, 0, 180)
 logScroll.Position = UDim2.new(0, 0, 0, 0)
 logScroll.BackgroundColor3 = THEME.Surface
 logScroll.BorderSizePixel = 0
@@ -1977,20 +2091,334 @@ local HttpService = game:GetService("HttpService")
 local InsertService = game:GetService("InsertService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local StarterGui = game:GetService("StarterGui")
 local StarterPlayer = game:GetService("StarterPlayer")
 local StarterPlayerScripts = StarterPlayer:WaitForChild("StarterPlayerScripts")
 
--- Separate ModuleScript chunk avoids Luau "Out of local registers" (limit ~200) on this large plugin.
-local StructuredBuild = require(script.Parent:WaitForChild("StructuredBuild"))
+-- Single-script build: embed StructuredBuild as a local module (isolated function scope).
+local StructuredBuild = (function()
+	local workspace = game:GetService("Workspace")
+	local ServerScriptService = game:GetService("ServerScriptService")
+	local StarterGui = game:GetService("StarterGui")
+	local StarterPlayer = game:GetService("StarterPlayer")
+	local StarterPlayerScripts = StarterPlayer:WaitForChild("StarterPlayerScripts")
+
+	local ROOT_FOLDER_NAME = "AI_Build"
+
+	local function getOrCreateFolder(parent, name)
+		local f = parent:FindFirstChild(name)
+		if f and f:IsA("Folder") then
+			return f
+		end
+		f = Instance.new("Folder")
+		f.Name = name
+		f.Parent = parent
+		return f
+	end
+
+	local function ensureAiFolders()
+		return {
+			workspace = getOrCreateFolder(workspace, ROOT_FOLDER_NAME),
+			server = getOrCreateFolder(ServerScriptService, ROOT_FOLDER_NAME),
+			gui = getOrCreateFolder(StarterGui, ROOT_FOLDER_NAME),
+			starterPlayerScripts = getOrCreateFolder(StarterPlayerScripts, ROOT_FOLDER_NAME),
+		}
+	end
+
+	local function clearGeneratedBuild()
+		local removed = 0
+		local w = workspace:FindFirstChild(ROOT_FOLDER_NAME)
+		if w then
+			if pcall(function()
+				w:Destroy()
+			end) then
+				removed += 1
+			end
+		end
+		local s = ServerScriptService:FindFirstChild(ROOT_FOLDER_NAME)
+		if s then
+			if pcall(function()
+				s:Destroy()
+			end) then
+				removed += 1
+			end
+		end
+		local g = StarterGui:FindFirstChild(ROOT_FOLDER_NAME)
+		if g then
+			if pcall(function()
+				g:Destroy()
+			end) then
+				removed += 1
+			end
+		end
+		local sps = StarterPlayerScripts:FindFirstChild(ROOT_FOLDER_NAME)
+		if sps then
+			if pcall(function()
+				sps:Destroy()
+			end) then
+				removed += 1
+			end
+		end
+		return removed
+	end
+
+	local ALLOWED_CLASSES = {
+		Folder = true,
+		Model = true,
+		Part = true,
+		MeshPart = true,
+		SpawnLocation = true,
+		PointLight = true,
+		BillboardGui = true,
+		ScreenGui = true,
+		TextLabel = true,
+		TextButton = true,
+		UICorner = true,
+		UIStroke = true,
+		UIListLayout = true,
+		Script = true,
+		LocalScript = true,
+		ModuleScript = true,
+	}
+
+	local ALLOWED_PROPERTIES = {
+		Name = true,
+		Anchored = true,
+		CanCollide = true,
+		Transparency = true,
+		Material = true,
+		Color = true,
+		BrickColor = true,
+		Brightness = true,
+		Range = true,
+		Size = true,
+		Position = true,
+		CFrame = true,
+		Rotation = true,
+		Text = true,
+		TextSize = true,
+		TextColor3 = true,
+		BorderSizePixel = true,
+		BackgroundColor3 = true,
+		BackgroundTransparency = true,
+		Font = true,
+		Visible = true,
+		Enabled = true,
+		ResetOnSpawn = true,
+		AlwaysOnTop = true,
+		StudsOffset = true,
+		StudsOffsetWorldSpace = true,
+	}
+
+	local function toColor3(v)
+		if typeof(v) == "Color3" then
+			return v
+		end
+		if type(v) == "string" then
+			local r, g, b = v:match("@{r=([%-%d%.]+)%s*;%s*g=([%-%d%.]+)%s*;%s*b=([%-%d%.]+)%s*}")
+			if r and g and b then
+				r, g, b = tonumber(r), tonumber(g), tonumber(b)
+				if r and g and b then
+					if r <= 1 and g <= 1 and b <= 1 then
+						return Color3.fromRGB(r * 255, g * 255, b * 255)
+					end
+					return Color3.fromRGB(r, g, b)
+				end
+			end
+		end
+		if type(v) == "table" then
+			if v.r and v.g and v.b then
+				return Color3.new(v.r, v.g, v.b)
+			end
+			if #v == 3 then
+				if v[1] > 1 or v[2] > 1 or v[3] > 1 then
+					return Color3.fromRGB(v[1], v[2], v[3])
+				end
+				return Color3.new(v[1], v[2], v[3])
+			end
+		end
+		return nil
+	end
+
+	local function toVector3(v)
+		if typeof(v) == "Vector3" then
+			return v
+		end
+		if type(v) == "string" then
+			local x, y, z = v:match("@{x=([%-%d%.]+)%s*;%s*y=([%-%d%.]+)%s*;%s*z=([%-%d%.]+)%s*}")
+			if x and y and z then
+				x, y, z = tonumber(x), tonumber(y), tonumber(z)
+				if x and y and z then
+					return Vector3.new(x, y, z)
+				end
+			end
+		end
+		if type(v) == "table" and #v == 3 then
+			return Vector3.new(v[1], v[2], v[3])
+		end
+		return nil
+	end
+
+	local function toCFrame(v)
+		if typeof(v) == "CFrame" then
+			return v
+		end
+		if type(v) == "table" and #v == 3 then
+			return CFrame.new(v[1], v[2], v[3])
+		end
+		return nil
+	end
+
+	local function resolveServiceParent(parentKey)
+		if parentKey == "workspace" then
+			return workspace
+		elseif parentKey == "ServerScriptService" then
+			return ServerScriptService
+		elseif parentKey == "StarterGui" then
+			return StarterGui
+		elseif parentKey == "StarterPlayerScripts" then
+			return StarterPlayerScripts
+		end
+		return nil
+	end
+
+	local function applyStructuredBuild(build, recordHistory)
+		if type(build) ~= "table" or type(build.instances) ~= "table" then
+			return false, "Invalid build payload"
+		end
+
+		if recordHistory == nil then
+			recordHistory = true
+		end
+
+		clearGeneratedBuild()
+		local folders = ensureAiFolders()
+
+		local created = {}
+		local specs = {}
+		for _, spec in ipairs(build.instances) do
+			if type(spec) == "table" and type(spec.id) == "string" and type(spec.className) == "string" then
+				table.insert(specs, spec)
+			end
+		end
+
+		for _, spec in ipairs(specs) do
+			if not ALLOWED_CLASSES[spec.className] then
+				return false, "Disallowed class: " .. tostring(spec.className)
+			end
+			local inst = Instance.new(spec.className)
+			if type(spec.name) == "string" and spec.name ~= "" then
+				inst.Name = spec.name
+			end
+			created[spec.id] = inst
+		end
+
+		for _, spec in ipairs(specs) do
+			local inst = created[spec.id]
+			local props = spec.properties
+			if type(props) == "table" then
+				for k, v in pairs(props) do
+					if ALLOWED_PROPERTIES[k] then
+						pcall(function()
+							if k == "Color" or k == "TextColor3" or k == "BackgroundColor3" then
+								local c = toColor3(v)
+								if c then
+									inst[k] = c
+								end
+							elseif
+								k == "Position"
+								or k == "Size"
+								or k == "Rotation"
+								or k == "StudsOffset"
+								or k == "StudsOffsetWorldSpace"
+							then
+								local vec = toVector3(v)
+								if vec then
+									inst[k] = vec
+								end
+							elseif k == "BrickColor" then
+								if type(v) == "string" then
+									pcall(function()
+										inst[k] = BrickColor.new(v)
+									end)
+								end
+							elseif k == "CFrame" then
+								local cf = toCFrame(v)
+								if cf then
+									inst.CFrame = cf
+								end
+							elseif k == "Material" then
+								if type(v) == "string" then
+									pcall(function()
+										local maybe = Enum.Material[v]
+										if maybe then
+											inst.Material = maybe
+										end
+									end)
+								end
+							else
+								inst[k] = v
+							end
+						end)
+					end
+				end
+			end
+
+			if
+				(inst:IsA("Script") or inst:IsA("LocalScript") or inst:IsA("ModuleScript"))
+				and type(spec.source) == "string"
+			then
+				pcall(function()
+					inst.Source = spec.source
+				end)
+			end
+		end
+
+		for _, spec in ipairs(specs) do
+			local inst = created[spec.id]
+			local parent = nil
+			if type(spec.parent) == "string" then
+				parent = created[spec.parent] or resolveServiceParent(spec.parent)
+			end
+			if not parent then
+				parent = folders.workspace
+			end
+			if parent == workspace then
+				parent = folders.workspace
+			elseif parent == ServerScriptService then
+				parent = folders.server
+			elseif parent == StarterGui then
+				parent = folders.gui
+			elseif parent == StarterPlayerScripts then
+				parent = folders.starterPlayerScripts
+			end
+			pcall(function()
+				inst.Parent = parent
+			end)
+		end
+
+		return true, ("Created %d instances"):format(#specs)
+	end
+
+	return {
+		getOrCreateFolder = getOrCreateFolder,
+		ensureAiFolders = ensureAiFolders,
+		clearGeneratedBuild = clearGeneratedBuild,
+		applyStructuredBuild = applyStructuredBuild,
+	}
+end)()
 
 local ROOT_FOLDER_NAME = "AI_Build"
 local GENERATED_GAME_NAME = "GeneratedGame"
 
-local DEFAULT_API_BASE = "https://assistant-3alw.onrender.com"
+-- Roblox Studio sometimes has trouble resolving "localhost"; 127.0.0.1 is more reliable for local testing.
+local DEFAULT_API_BASE = "http://127.0.0.1:3000"
+
+-- If your backend has BACKEND_API_KEY set, paste the same value here so requests succeed.
+-- Leave empty if your backend does not require an API key (local testing only).
+local BACKEND_API_KEY = ""
 
 -- Optional micro-sound (set to a valid rbxassetid://... you own if desired).
 local TICK_SOUND_ID = ""
@@ -2428,6 +2856,9 @@ local function postJson(url, body)
 	local headers = {
 		["Content-Type"] = "application/json",
 	}
+	if BACKEND_API_KEY ~= "" then
+		headers["x-api-key"] = BACKEND_API_KEY
+	end
 
 	local ok, resp = pcall(function()
 		return HttpService:RequestAsync({
@@ -2457,7 +2888,7 @@ local function postJson(url, body)
 	if resp.Success ~= true then
 		local code = tonumber(resp.StatusCode) or 0
 		if code == 401 then
-			return nil, "Unauthorized."
+			return nil, "Unauthorized. If your backend uses BACKEND_API_KEY, set BACKEND_API_KEY in this plugin to match."
 		elseif code == 429 then
 			return nil, "Rate limited. Try again in a moment."
 		end
@@ -2501,7 +2932,7 @@ local function requestWithTimeout(url, body, timeoutSeconds)
 			return
 		end
 		timedOut = true
-		resultErr = "Request timed out (Render may be cold-starting). Try again."
+		resultErr = "Request timed out. Is the backend running and reachable?"
 	end)
 
 	-- Wait until either done or timed out
@@ -3095,6 +3526,7 @@ clearBtn.MouseButton1Click:Connect(function()
 	lastPrompt = ""
 	promptBox.Text = ""
 	promptBox.PlaceholderText = "💡 Describe your game or feature..."
+	setQuickChips({})
 	setLog(("Cleared AI build folders: %d"):format(removed))
 	setButtonsEnabled(true)
 end)
@@ -3294,7 +3726,8 @@ enhancePromptBtn.MouseButton1Click:Connect(function()
 	local data, err = requestWithTimeout(getApiBase() .. "/enhance-prompt", {
 		prompt = promptRaw,
 		template = selectedTemplate,
-		modelTier = modelTierForApi(),
+		-- Keep Enhance Prompt consistently fast: backend will run a single FAST pass.
+		modelTier = "fast",
 	}, 25)
 	stopLoader()
 
@@ -3482,6 +3915,7 @@ generateBtn.MouseButton1Click:Connect(function()
 			promptBox.Text = ""
 			promptBox.PlaceholderText = "💡 Optional: describe another change (or use actions below)"
 			saveMemoryFromStructuredBuild(promptRaw, data.build)
+			setQuickChips(buildAutoSuggestionsFromPrompt(promptRaw))
 			appendConsoleLine("Done. " .. msg, { typewriter = true, speedSecondsPerChar = 0.001 })
 			appendConsoleLine("Analyzing environment and importing toolbox assets...", { typewriter = false })
 			if cancelToken ~= myToken then
