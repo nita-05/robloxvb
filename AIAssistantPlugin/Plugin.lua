@@ -2004,6 +2004,13 @@ local StarterGui = game:GetService("StarterGui")
 local StarterPlayer = game:GetService("StarterPlayer")
 local StarterPlayerScripts = StarterPlayer:WaitForChild("StarterPlayerScripts")
 
+-- Stable user id for billing, credits, and job polling.
+local USER_ID = plugin:GetSetting("AIAssistantUserId")
+if type(USER_ID) ~= "string" or USER_ID == "" then
+	USER_ID = HttpService:GenerateGUID(false)
+	plugin:SetSetting("AIAssistantUserId", USER_ID)
+end
+
 -- Single-script build: embed StructuredBuild as a local module (isolated function scope).
 local StructuredBuild = (function()
 	local workspace = game:GetService("Workspace")
@@ -2761,6 +2768,7 @@ local function postJson(url, body)
 	if BACKEND_API_KEY ~= "" then
 		headers["x-api-key"] = BACKEND_API_KEY
 	end
+	headers["x-user-id"] = USER_ID
 
 	local ok, resp = pcall(function()
 		return HttpService:RequestAsync({
@@ -2804,6 +2812,103 @@ local function postJson(url, body)
 		return nil, "Invalid JSON response: " .. tostring(dataOrError)
 	end
 	return dataOrError, nil
+end
+
+local function getJson(url)
+	local headers = {}
+	if BACKEND_API_KEY ~= "" then
+		headers["x-api-key"] = BACKEND_API_KEY
+	end
+	headers["x-user-id"] = USER_ID
+
+	local ok, resp = pcall(function()
+		return HttpService:RequestAsync({
+			Url = url,
+			Method = "GET",
+			Headers = headers,
+		})
+	end)
+	if not ok then
+		return nil, tostring(resp)
+	end
+	if type(resp) ~= "table" then
+		return nil, "Invalid HTTP response"
+	end
+	if resp.Success ~= true then
+		return nil, ("HTTP %s: %s"):format(tostring(resp.StatusCode), tostring(resp.StatusMessage))
+	end
+	local decodeOk, dataOrError = pcall(function()
+		return HttpService:JSONDecode(resp.Body or "")
+	end)
+	if not decodeOk then
+		return nil, "Invalid JSON response: " .. tostring(dataOrError)
+	end
+	return dataOrError, nil
+end
+
+local function startJob(jobType, payload)
+	local data, err = postJson(getApiBase() .. "/jobs/start", {
+		type = jobType,
+		userId = USER_ID,
+		-- spread payload
+		prompt = payload.prompt,
+		template = payload.template,
+		modelTier = payload.modelTier,
+		mode = payload.mode,
+		structured = payload.structured,
+		action = payload.action,
+		instruction = payload.instruction,
+		build = payload.build,
+	})
+	if err then
+		return nil, err
+	end
+	if type(data) ~= "table" or data.success == false then
+		return nil, tostring((type(data) == "table" and data.error) or "job_start_failed")
+	end
+	local jobId = tostring(data.jobId or "")
+	if jobId == "" then
+		return nil, "Missing jobId"
+	end
+	return jobId, nil
+end
+
+local function pollJob(jobId, myToken, onEvent, timeoutSeconds)
+	local cursor = 0
+	local started = os.clock()
+	while cancelToken == myToken do
+		if timeoutSeconds and (os.clock() - started) > timeoutSeconds then
+			return nil, "Timed out waiting for job"
+		end
+
+		local url = getApiBase() .. "/jobs/" .. HttpService:UrlEncode(jobId) .. "?cursor=" .. tostring(cursor)
+		local data, err = getJson(url)
+		if err then
+			task.wait(0.35)
+		else
+			if type(data.events) == "table" then
+				for _, ev in ipairs(data.events) do
+					cursor = tonumber(ev.id) or cursor
+					if type(onEvent) == "function" then
+						onEvent(ev)
+					end
+				end
+				cursor = tonumber(data.nextCursor) or cursor
+			end
+			local job = type(data.job) == "table" and data.job or nil
+			if job and (job.status == "done") then
+				return job.result, nil
+			end
+			if job and (job.status == "error") then
+				return nil, tostring(job.error or "job_error")
+			end
+			if job and (job.status == "cancelled") then
+				return nil, "Cancelled"
+			end
+		end
+		task.wait(0.35)
+	end
+	return nil, "Cancelled"
 end
 
 local function requestWithTimeout(url, body, timeoutSeconds)
@@ -3575,14 +3680,28 @@ local function runAgentRefine(instructionText, agentLabel)
 	local refinedPrompt = augmentPromptForAI(lastPrompt)
 	local stopLoader = startConsoleLoader("🔧 Processing your Roblox system", myToken)
 	warmRenderIfNeeded(myToken)
-	local data, err = requestWithTimeout(getApiBase() .. "/ai-final", {
+	local jobId, startErr = startJob("refine", {
 		prompt = refinedPrompt,
 		structured = true,
 		modelTier = modelTierForApi(),
 		action = "refine",
 		instruction = instructionText,
 		build = lastStructuredBuild,
-	}, 240)
+	})
+	if startErr then
+		stopLoader()
+		setLog((agentLabel or "Action") .. " request failed: " .. startErr)
+		isBusy = false
+		setButtonsEnabled(true)
+		setActionStatus("⚡ Ready")
+		return
+	end
+	appendConsoleLine("🔧 Processing... (live)", { typewriter = false })
+	local data, err = pollJob(jobId, myToken, function(ev)
+		if type(ev) == "table" and type(ev.message) == "string" then
+			appendConsoleLine("• " .. ev.message, { typewriter = false })
+		end
+	end, 360)
 	stopLoader()
 
 	if cancelToken ~= myToken then
@@ -3661,12 +3780,28 @@ enhancePromptBtn.MouseButton1Click:Connect(function()
 
 	local stopLoader = startConsoleLoader("🧠 Improving your prompt", myToken)
 	warmRenderIfNeeded(myToken)
-	local data, err = requestWithTimeout(getApiBase() .. "/enhance-prompt", {
+	local jobId, startErr = startJob("enhance", {
 		prompt = promptRaw,
 		template = selectedTemplate,
-		-- Keep Enhance Prompt consistently fast: backend will run a single FAST pass.
 		modelTier = "fast",
-	}, 90)
+	})
+	if startErr then
+		stopLoader()
+		setLog("Enhance Prompt failed: " .. startErr)
+		enhanceTooltip.Text = "Enhance Prompt"
+		enhanceTooltip.Visible = false
+		isBusy = false
+		setButtonsEnabled(true)
+		setActionStatus("⚡ Ready")
+		return
+	end
+
+	appendConsoleLine("🧠 Enhancing... (live)", { typewriter = false })
+	local result, err = pollJob(jobId, myToken, function(ev)
+		if type(ev) == "table" and type(ev.message) == "string" then
+			appendConsoleLine("• " .. ev.message, { typewriter = false })
+		end
+	end, 180)
 	stopLoader()
 
 	if cancelToken ~= myToken then
@@ -3687,14 +3822,14 @@ enhancePromptBtn.MouseButton1Click:Connect(function()
 	end
 
 	local improved = ""
-	if type(data) == "table" then
-		improved = tostring(data.prompt or data.enhancedPrompt or "")
+	if type(result) == "table" then
+		improved = tostring(result.prompt or result.enhancedPrompt or "")
 	end
 	if improved == "" then
 		improved = promptRaw
 	end
 
-	if modelUpgradedFromResponse(data) then
+	if modelUpgradedFromResponse(result) then
 		appendConsoleLine("🧠 Enhancing... — quality pass applied (stronger model).", { streamWords = true, secondsPerWord = 0.007 })
 	end
 
@@ -3814,11 +3949,27 @@ generateBtn.MouseButton1Click:Connect(function()
 
 	local augmentedPrompt = augmentPromptForAI(promptRaw)
 	warmRenderIfNeeded(myToken)
-	local data, err = requestWithTimeout(getApiBase() .. "/ai-final", {
+	local jobId, startErr = startJob("generate", {
 		prompt = augmentedPrompt,
 		structured = true,
 		modelTier = modelTierForApi(),
-	}, 240)
+		action = "generate",
+	})
+	if startErr then
+		stopLoader()
+		setLog("Generate request failed: " .. startErr)
+		isBusy = false
+		setButtonsEnabled(true)
+		setActionStatus("⚡ Ready")
+		return
+	end
+
+	appendConsoleLine("⚡ Generating... (live)", { typewriter = false })
+	local data, err = pollJob(jobId, myToken, function(ev)
+		if type(ev) == "table" and type(ev.message) == "string" then
+			appendConsoleLine("• " .. ev.message, { typewriter = false })
+		end
+	end, 480)
 	stopLoader()
 
 	

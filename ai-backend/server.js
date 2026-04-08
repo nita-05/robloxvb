@@ -3,6 +3,17 @@ const express = require("express");
 const cors = require("cors");
 const OpenAI = require("openai");
 const models = require("./config/models");
+const { migrate } = require("./db/migrate");
+const { cleanupOldJobs } = require("./services/cleanup");
+const { recordUsage } = require("./services/usageLedger");
+const {
+    normalizeUserId,
+    createJob,
+    appendEvent,
+    setJobStatus,
+    getJob,
+    getEventsSince,
+} = require("./services/jobs");
 
 const app = express();
 const allowedOrigins = String(process.env.ALLOWED_ORIGINS || "")
@@ -83,6 +94,276 @@ app.get("/", (req, res) => {
 
 app.get("/health", (req, res) => {
     res.status(200).json({ ok: true });
+});
+
+// --- DB migrations (jobs/streaming) ---
+// Best effort: if DATABASE_URL isn't set, app still runs (but jobs API will error).
+migrate()
+    .then((r) => {
+        if (r?.ok) console.log("[db] migrations ok");
+        else console.warn("[db] migrations skipped:", r?.reason || "unknown");
+    })
+    .catch((e) => console.warn("[db] migrations failed:", e?.message || e));
+
+// Cleanup old streaming records (jobs + events) so Postgres doesn't grow forever.
+// Usage ledger remains forever for billing.
+async function runCleanupOnce() {
+    try {
+        const r = await cleanupOldJobs();
+        if (r?.ok && r.deletedJobs) console.log(`[db] cleanup: deleted ${r.deletedJobs} job(s) older than ${r.keepHours}h`);
+    } catch (e) {
+        console.warn("[db] cleanup failed:", e?.message || e);
+    }
+}
+runCleanupOnce();
+setInterval(runCleanupOnce, Number(process.env.JOB_CLEANUP_INTERVAL_MS || 60 * 60 * 1000));
+
+// --- Jobs API (streaming-like via polling) ---
+// Start a job and return immediately; client polls /jobs/:id for progress.
+app.post("/jobs/start", async (req, res) => {
+    try {
+        const userId = normalizeUserId(req);
+        const type = String(req.body?.type || "generate");
+        const requestJson = req.body || {};
+        const jobId = await createJob({ userId, type, requestJson });
+
+        res.json({ success: true, jobId });
+
+        // Background worker
+        setImmediate(async () => {
+            try {
+                await setJobStatus({ jobId, status: "running" });
+                await appendEvent({ jobId, message: "running" });
+
+                // Route the job to existing logic by calling internal handlers.
+                if (type === "enhance") {
+                    await appendEvent({ jobId, message: "calling /enhance-prompt logic" });
+                    const prompt = String(requestJson.prompt || "").trim();
+                    const template = String(requestJson.template || "None").trim();
+                    const mode = String(requestJson.modelTier || requestJson.mode || "fast").toLowerCase();
+
+                    if (!openai) {
+                        await setJobStatus({ jobId, status: "done", resultJson: { prompt: enhancePromptLocal(prompt, template), modelUpgraded: false } });
+                        await appendEvent({ jobId, message: "done (local fallback)" });
+                        return;
+                    }
+
+                    // Reuse existing enhance prompt code path (inline minimal).
+                    const systemContent =
+                        "You rewrite Roblox game requests into a clear, Roblox-Studio-friendly build prompt.\n" +
+                        "Output ONLY the improved prompt text (no markdown fences, no extra commentary).\n" +
+                        "Make it concise but specific, using short sections and bullet-like lines.\n" +
+                        "Include: Goal, Core loop, Key mechanics, UI, Win/Fail conditions, Constraints.\n" +
+                        "Constraints: safe for Studio plugin execution; avoid copyrighted assets; avoid audio asset IDs; keep scope to an MVP.";
+                    const userContent = `Template: ${template}\nOriginal prompt:\n${prompt}`;
+                    const messages = [
+                        { role: "system", content: systemContent },
+                        { role: "user", content: userContent },
+                    ];
+
+                    await appendEvent({ jobId, message: "openai: fast pass" });
+                    const fastCompletion = await openai.chat.completions.create({
+                        model: models.FAST_CHAT,
+                        messages,
+                    });
+                    let enhancedPrompt = String(fastCompletion.choices?.[0]?.message?.content || "").trim();
+                    let modelUpgraded = false;
+
+                    // Keep job enhance simple/fast: only upgrade if explicitly requested by mode.
+                    if (mode === "balanced" || mode === "smart") {
+                        try {
+                            await appendEvent({ jobId, message: "openai: upgrade pass" });
+                            const upgradeModel = mode === "smart" ? models.SMART_CHAT : models.BALANCED_CHAT;
+                            const upgraded = await openai.chat.completions.create({
+                                model: upgradeModel,
+                                messages,
+                            });
+                            const t2 = String(upgraded.choices?.[0]?.message?.content || "").trim();
+                            if (t2) {
+                                enhancedPrompt = t2;
+                                modelUpgraded = true;
+                            }
+                        } catch (e) {
+                            await appendEvent({ jobId, level: "warn", message: "upgrade failed; using fast output" });
+                        }
+                    }
+
+                    const finalPrompt = enhancedPrompt || enhancePromptLocal(prompt, template);
+                    await setJobStatus({ jobId, status: "done", resultJson: { prompt: finalPrompt, modelUpgraded } });
+                    await appendEvent({ jobId, message: "done" });
+                    await recordUsage({
+                        userId,
+                        jobId,
+                        action: "enhance",
+                        model: models.FAST_CHAT,
+                        tokensIn: fastCompletion.usage?.prompt_tokens ?? null,
+                        tokensOut: fastCompletion.usage?.completion_tokens ?? null,
+                    });
+                    return;
+                }
+
+                // Default: generate/refine using existing /ai-final handler logic by direct call
+                await appendEvent({ jobId, message: "calling /ai-final logic" });
+
+                // Minimal extraction (matches /ai-final expectations)
+                const prompt = String(requestJson.prompt || "");
+                const structured = requestJson.structured === true;
+                const action = String(requestJson.action || "generate");
+                const instruction = String(requestJson.instruction || "");
+                const previousBuild = requestJson.build;
+
+                // We only support structured mode for jobs (plugin uses structured).
+                if (!structured) {
+                    await setJobStatus({ jobId, status: "error", error: "jobs require structured=true" });
+                    await appendEvent({ jobId, level: "error", message: "error: jobs require structured=true" });
+                    return;
+                }
+                if (!openai) {
+                    await setJobStatus({ jobId, status: "error", error: "OpenAI not configured" });
+                    await appendEvent({ jobId, level: "error", message: "error: OpenAI not configured" });
+                    return;
+                }
+
+                // Reuse the structured build part of /ai-final (inline minimal fast-only)
+                const schemaHint = {
+                    version: 1,
+                    rootFolderName: "AI_Build",
+                    instances: [
+                        {
+                            id: "root",
+                            className: "Folder",
+                            name: "AI_Build",
+                            parent: "workspace",
+                            properties: {},
+                        },
+                    ],
+                };
+
+                const userContent =
+                    action === "refine"
+                        ? "You are refining an existing build.\n" +
+                          "Game prompt:\n" +
+                          prompt +
+                          "\n\n" +
+                          "Refine instruction:\n" +
+                          instruction +
+                          "\n\n" +
+                          "Previous build JSON:\n" +
+                          JSON.stringify(previousBuild || {}, null, 2) +
+                          "\n\n" +
+                          "Return the FULL updated build JSON (not a diff)."
+                        : prompt;
+
+                const systemContent =
+                    "You output ONLY valid JSON. No markdown. No explanations.\n" +
+                    "Return an object with:\n" +
+                    "- message: short string\n" +
+                    "- build: { version: 1, rootFolderName: 'AI_Build', instances: [...] }\n" +
+                    "instances is a flat list. Each instance has:\n" +
+                    "- id (string, unique)\n" +
+                    "- className (e.g. Folder, Model, Part, MeshPart, SpawnLocation, ScreenGui, TextLabel, TextButton, BillboardGui, PointLight, Script, LocalScript, ModuleScript)\n" +
+                    "- name (optional string)\n" +
+                    "- parent (string id, or one of: 'workspace', 'ServerScriptService', 'StarterGui')\n" +
+                    "- properties (object of simple values; use arrays for vectors: [x,y,z] and colors: [r,g,b])\n" +
+                    "- source (only for Script/LocalScript/ModuleScript)\n" +
+                    "Safety rules:\n" +
+                    "- Do NOT reference or require existing assets (no rbxassetid sounds).\n" +
+                    "- Prefer creating everything under rootFolderName in workspace.\n" +
+                    "- If you create UI, put it under StarterGui.\n" +
+                    "- If you create server scripts, put under ServerScriptService.\n" +
+                    "- Keep IDs stable when refining so objects update predictably.\n" +
+                    "Example schema:\n" +
+                    JSON.stringify(schemaHint);
+
+                const messages = [
+                    { role: "system", content: systemContent },
+                    { role: "user", content: userContent },
+                ];
+
+                await appendEvent({ jobId, message: "openai: generating structured build" });
+                const fastAiRes = await openai.chat.completions.create({
+                    model: models.FAST_CHAT,
+                    messages,
+                });
+                const raw = String(fastAiRes.choices?.[0]?.message?.content || "").trim();
+                const parsed = safeJsonParse(raw);
+                if (!parsed.ok) {
+                    await setJobStatus({ jobId, status: "error", error: "invalid_json" });
+                    await appendEvent({ jobId, level: "error", message: "error: invalid JSON from model" });
+                    return;
+                }
+
+                const out = parsed.value;
+                const v = validateStructuredBuild(out.build);
+                if (!v.ok) {
+                    await setJobStatus({ jobId, status: "error", error: `invalid_build:${v.error}` });
+                    await appendEvent({ jobId, level: "error", message: "error: invalid build schema" });
+                    return;
+                }
+
+                await setJobStatus({
+                    jobId,
+                    status: "done",
+                    resultJson: { mode: "structured", message: out.message || "✅ Structured build ready", build: out.build, modelUpgraded: false },
+                });
+                await appendEvent({ jobId, message: "done" });
+                await recordUsage({
+                    userId,
+                    jobId,
+                    action: action === "refine" ? "refine" : "generate",
+                    model: models.FAST_CHAT,
+                    tokensIn: fastAiRes.usage?.prompt_tokens ?? null,
+                    tokensOut: fastAiRes.usage?.completion_tokens ?? null,
+                });
+            } catch (e) {
+                await setJobStatus({ jobId, status: "error", error: e instanceof Error ? e.message : "internal error" });
+                await appendEvent({ jobId, level: "error", message: e instanceof Error ? e.message : "internal error" });
+            }
+        });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e instanceof Error ? e.message : "internal error" });
+    }
+});
+
+app.get("/jobs/:id", async (req, res) => {
+    try {
+        const jobId = String(req.params.id || "").trim();
+        const cursor = Number(req.query.cursor || 0);
+        const job = await getJob({ jobId });
+        if (!job) return res.status(404).json({ success: false, error: "not_found" });
+        const events = await getEventsSince({ jobId, afterId: cursor, limit: 200 });
+        const nextCursor = events.length ? events[events.length - 1].id : cursor;
+        return res.json({
+            success: true,
+            job: {
+                id: job.id,
+                status: job.status,
+                type: job.type,
+                error: job.error,
+                result: job.result_json,
+            },
+            events,
+            nextCursor,
+        });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e instanceof Error ? e.message : "internal error" });
+    }
+});
+
+app.post("/jobs/:id/cancel", async (req, res) => {
+    try {
+        const jobId = String(req.params.id || "").trim();
+        const job = await getJob({ jobId });
+        if (!job) return res.status(404).json({ success: false, error: "not_found" });
+        if (job.status === "done" || job.status === "error" || job.status === "cancelled") {
+            return res.json({ success: true, status: job.status });
+        }
+        await setJobStatus({ jobId, status: "cancelled" });
+        await appendEvent({ jobId, level: "warn", message: "cancelled" });
+        return res.json({ success: true, status: "cancelled" });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e instanceof Error ? e.message : "internal error" });
+    }
 });
 
 function safeJsonParse(text) {
