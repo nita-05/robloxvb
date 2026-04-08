@@ -56,8 +56,8 @@ local selectedTemplate = "None" -- "None" | "Obby Game" | "Simulator" | "Tycoon"
 -- Simple usage feedback (UI-only until real pricing is implemented).
 local credits = 100
 
--- Quality mode: Fast / Balanced / Smart (backend: fast first, upgrade when prompt is complex)
-local selectedModelPreset = "balanced" -- "fast" | "balanced" | "smart"
+-- Quality mode: Fast / Balanced / Smart (default Fast = fewest model calls, closest to “snappy” UX)
+local selectedModelPreset = "fast" -- "fast" | "balanced" | "smart"
 
 -- Client-side memory (UI-level). We store prompt + compact script info.
 local memoryEntries = {}
@@ -2932,7 +2932,12 @@ local function requestWithTimeout(url, body, timeoutSeconds)
 			return
 		end
 		timedOut = true
-		resultErr = "Request timed out. Is the backend running and reachable?"
+		local hint = "Try again in a moment."
+		if string.find(string.lower(url), "onrender.com", 1, true) then
+			hint =
+				"Free Render often needs 1–2 min to wake after sleep—open " .. getApiBase() .. "/health in a browser once, wait until you see JSON, then retry."
+		end
+		resultErr = "Request timed out. " .. hint
 	end)
 
 	-- Wait until either done or timed out
@@ -3455,7 +3460,7 @@ local function runGamePlanExecution()
 				style = assetStyle,
 				regenerate = false,
 				maxAssets = 12,
-			}, 40)
+			}, 120)
 			if errA then
 				appendLog("Asset import failed: " .. errA)
 			elseif type(dataA) == "table" and dataA.success ~= false and type(dataA.assets) == "table" then
@@ -3475,7 +3480,7 @@ local function runGamePlanExecution()
 			prompt = promptText,
 			enhance = hybridAiBoost,
 			forceAiOnly = hybridForceAiOnly,
-		}, 50)
+		}, 180)
 		if cancelToken ~= myToken then
 			isBusy = false
 			setButtonsEnabled(true)
@@ -3560,7 +3565,7 @@ local function autoImportToolboxEnvironmentAssets(gamePromptText, requestToken)
 		style = assetStyle,
 		regenerate = false,
 		maxAssets = 12,
-	}, 45)
+	}, 120)
 
 	if cancelToken ~= requestToken then
 		return
@@ -3649,7 +3654,7 @@ local function runAgentRefine(instructionText, agentLabel)
 		action = "refine",
 		instruction = instructionText,
 		build = lastStructuredBuild,
-	}, 45)
+	}, 240)
 	stopLoader()
 
 	if cancelToken ~= myToken then
@@ -3867,13 +3872,19 @@ generateBtn.MouseButton1Click:Connect(function()
 
 	local stopLoader = startConsoleLoader("⚡ Generating your Roblox system", myToken)
 	appendConsoleLine("⚡ Generate — contacting AI...", { streamWords = true, secondsPerWord = 0.006 })
+	if string.find(string.lower(getApiBase()), "onrender.com", 1, true) then
+		appendConsoleLine(
+			"Tip: Free Render sleeps when idle—the first request can take a minute to wake the server; after that, replies are faster.",
+			{ typewriter = false }
+		)
+	end
 
 	local augmentedPrompt = augmentPromptForAI(promptRaw)
 	local data, err = requestWithTimeout(getApiBase() .. "/ai-final", {
 		prompt = augmentedPrompt,
 		structured = true,
 		modelTier = modelTierForApi(),
-	}, 45)
+	}, 240)
 	stopLoader()
 
 	
